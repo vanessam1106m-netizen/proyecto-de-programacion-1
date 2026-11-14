@@ -1,0 +1,7 @@
+# Archivos temporales y de ejecucion
+*.exe
+*.o
+*.obj
+
+# Documentos internos
+proyecto_progra
