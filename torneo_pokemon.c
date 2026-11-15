@@ -378,9 +378,39 @@ int simular_combate_1v1(EjemplarPokemon *p1, EjemplarPokemon *p2){
 
 #include<string.h>
 
-// activa las versiones provisionales de las opciones 1 a 5 del menu (pokedex, registrar entrenador, equipos...)
-// cuando tus companeros ya tengan sus funciones reales, borra o comenta esta linea
-#define USAR_FUNCIONES_PROVISIONALES
+// ---------------------------------------------------------------------------
+// ajustes visuales y de juego (se pueden cambiar sin tocar nada mas del programa)
+// ---------------------------------------------------------------------------
+// USAR_COLORES: 1 = colores en pantalla | 0 = todo en blanco y negro
+// (si en tu consola ves simbolos raros como [31m, cambialo a 0)
+#define USAR_COLORES 1
+
+#define ANCHO 60         // ancho de los marcos del menu
+#define POR_PAGINA 12    // pokemon que se muestran por pagina en el catalogo
+#define MAX_STAT 150     // valor que llena por completo una barra de estadistica
+#define NIVEL_EQUIPO 2   // nivel con el que nacen los pokemon de los equipos
+
+#if USAR_COLORES
+    #define C_RESET    "\033[0m"
+    #define C_ROJO     "\033[31m"
+    #define C_VERDE    "\033[32m"
+    #define C_AMARILLO "\033[33m"
+    #define C_AZUL     "\033[34m"
+    #define C_MAGENTA  "\033[35m"
+    #define C_CIAN     "\033[36m"
+    #define C_BLANCO   "\033[37m"
+    #define C_GRIS     "\033[90m"
+#else
+    #define C_RESET    ""
+    #define C_ROJO     ""
+    #define C_VERDE    ""
+    #define C_AMARILLO ""
+    #define C_AZUL     ""
+    #define C_MAGENTA  ""
+    #define C_CIAN     ""
+    #define C_BLANCO   ""
+    #define C_GRIS     ""
+#endif
 
 // ---------------------------------------------------------------------------
 // constantes del torneo
@@ -396,6 +426,7 @@ int simular_combate_1v1(EjemplarPokemon *p1, EjemplarPokemon *p2){
 #define ARCHIVO_HISTORIAL "historial.txt"
 #define ARCHIVO_CLASIFICACION "clasificacion.txt"
 #define ARCHIVO_ENTRENADORES "entrenadores.txt"
+#define ARCHIVO_EQUIPOS "equipos.txt"
 
 // guarda el estado de un combate del torneo (los 64 combates numerados del reglamento)
 typedef struct {
@@ -434,6 +465,69 @@ int grupos_generados = 0;                    // 1 cuando los grupos y enfrentami
 int total_grupos = 0;                        // cantidad de grupos armados (entrenadores / 4)
 int entrenadores_en_grupos = 0;              // cuantos entrenadores habia cuando se armaron los grupos
 int fin_de_entrada = 0;                      // pasa a 1 si se acaba la entrada de datos (Ctrl+D / Ctrl+Z)
+
+// equipos de los entrenadores: la fila i corresponde al entrenador i del arreglo entrenadores
+EjemplarPokemon equipos[MAX_ENTRENADORES][POKEMON_POR_EQUIPO];
+int tamano_equipo[MAX_ENTRENADORES];         // cuantos pokemon tiene cada equipo (0 = sin equipo)
+
+// nombre en texto de cada tipo (la posicion coincide con el numero del enum IdTipo)
+const char *NOMBRES_TIPO[19] = {
+    "-", "Normal", "Fuego", "Agua", "Planta", "Electrico", "Hielo",
+    "Lucha", "Veneno", "Tierra", "Volador", "Psiquico", "Bicho",
+    "Roca", "Fantasma", "Dragon", "Siniestro", "Acero", "Hada"
+};
+
+// color con el que se dibuja cada tipo en pantalla (misma posicion que NOMBRES_TIPO)
+const char *COLORES_TIPO[19] = {
+    C_GRIS, C_BLANCO, C_ROJO, C_AZUL, C_VERDE, C_AMARILLO, C_CIAN,
+    C_ROJO, C_MAGENTA, C_AMARILLO, C_CIAN, C_MAGENTA, C_VERDE,
+    C_AMARILLO, C_MAGENTA, C_AZUL, C_GRIS, C_BLANCO, C_MAGENTA
+};
+
+// catalogo oficial de especies disponibles (Pokedex)
+// orden de cada dato: numero, nombre, tipo1 (texto), tipo1 (numero), tipo2 (texto), tipo2 (numero), HP, ataque, defensa, velocidad
+const Pokedex catalogo_pokedex[] = {
+    {1,   "Bulbasaur",  "Planta",    PLANTA,    "Veneno",   VENENO,    45,  49,  49,  45},
+    {3,   "Venusaur",   "Planta",    PLANTA,    "Veneno",   VENENO,    80,  82,  83,  80},
+    {4,   "Charmander", "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   39,  52,  43,  65},
+    {6,   "Charizard",  "Fuego",     FUEGO,     "Volador",  VOLADOR,   78,  84,  78, 100},
+    {7,   "Squirtle",   "Agua",      AGUA,      "Ninguno",  NINGUNO,   44,  48,  65,  43},
+    {9,   "Blastoise",  "Agua",      AGUA,      "Ninguno",  NINGUNO,   79,  83, 100,  78},
+    {25,  "Pikachu",    "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   35,  55,  40,  90},
+    {26,  "Raichu",     "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   60,  90,  55, 110},
+    {36,  "Clefable",   "Hada",      HADA,      "Ninguno",  NINGUNO,   95,  70,  73,  60},
+    {59,  "Arcanine",   "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   90, 110,  80,  95},
+    {65,  "Alakazam",   "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,   55,  50,  45, 120},
+    {68,  "Machamp",    "Lucha",     LUCHA,     "Ninguno",  NINGUNO,   90, 130,  80,  55},
+    {76,  "Golem",      "Roca",      ROCA,      "Tierra",   TIERRA,    80, 120, 130,  45},
+    {91,  "Cloyster",   "Agua",      AGUA,      "Hielo",    HIELO,     50,  95, 180,  70},
+    {94,  "Gengar",     "Fantasma",  FANTASMA,  "Veneno",   VENENO,    60,  65,  60, 110},
+    {112, "Rhydon",     "Tierra",    TIERRA,    "Roca",     ROCA,     105, 130, 120,  40},
+    {123, "Scyther",    "Bicho",     BICHO,     "Volador",  VOLADOR,   70, 110,  80, 105},
+    {127, "Pinsir",     "Bicho",     BICHO,     "Ninguno",  NINGUNO,   65, 125, 100,  85},
+    {130, "Gyarados",   "Agua",      AGUA,      "Volador",  VOLADOR,   95, 125,  79,  81},
+    {131, "Lapras",     "Agua",      AGUA,      "Hielo",    HIELO,    130,  85,  80,  60},
+    {134, "Vaporeon",   "Agua",      AGUA,      "Ninguno",  NINGUNO,  130,  65,  60,  65},
+    {135, "Jolteon",    "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   65,  65,  60, 130},
+    {136, "Flareon",    "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   65, 130,  60,  65},
+    {142, "Aerodactyl", "Roca",      ROCA,      "Volador",  VOLADOR,   80, 105,  65, 130},
+    {143, "Snorlax",    "Normal",    NORMAL,    "Ninguno",  NINGUNO,  160, 110,  65,  30},
+    {149, "Dragonite",  "Dragon",    DRAGON,    "Volador",  VOLADOR,   91, 134,  95,  80},
+    {150, "Mewtwo",     "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,  106, 110,  90, 130},
+    {196, "Espeon",     "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,   65,  65,  60, 110},
+    {197, "Umbreon",    "Siniestro", SINIESTRO, "Ninguno",  NINGUNO,   95,  65, 110,  65},
+    {212, "Scizor",     "Bicho",     BICHO,     "Acero",    ACERO,     70, 130, 100,  65},
+    {248, "Tyranitar",  "Roca",      ROCA,      "Siniestro",SINIESTRO,100, 134, 110,  61},
+    {282, "Gardevoir",  "Psiquico",  PSIQUICO,  "Hada",     HADA,      68,  65,  65,  80},
+    {376, "Metagross",  "Acero",     ACERO,     "Psiquico", PSIQUICO,  80, 135, 130,  70},
+    {445, "Garchomp",   "Dragon",    DRAGON,    "Tierra",   TIERRA,   108, 130,  95, 102},
+    {448, "Lucario",    "Lucha",     LUCHA,     "Acero",    ACERO,     70, 110,  70,  90},
+    {471, "Glaceon",    "Hielo",     HIELO,     "Ninguno",  NINGUNO,   65,  60, 110,  65},
+    {700, "Sylveon",    "Hada",      HADA,      "Ninguno",  NINGUNO,   95,  65,  65,  60}
+};
+
+// cantidad de especies del catalogo (se calcula sola: tamano total / tamano de una especie)
+#define TOTAL_POKEDEX ((int)(sizeof(catalogo_pokedex) / sizeof(catalogo_pokedex[0])))
 
 const char *NOMBRES_GRUPO[MAX_GRUPOS] = {"Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", "Grupo G", "Grupo H"};
 
@@ -529,6 +623,41 @@ void registrar_entrenador(void);
 void crear_equipo(void);
 void consultar_entrenadores(void);
 void consultar_equipos(void);
+
+// aspecto visual (pantalla limpia, marcos, colores, barras)
+void limpiar_pantalla(void);
+void pausa(void);
+void linea_de(char c, int cantidad);
+void borde(void);
+void fila(const char *texto);
+void fila_seccion(const char *texto);
+void opcion_menu(int numero, const char *texto);
+void titulo(const char *texto);
+void imprimir_logo(void);
+void imprimir_trofeo(void);
+void imprimir_barra(int valor, int maximo, int ancho);
+void imprimir_tipo(int id);
+
+// utilidades de texto
+void reemplazar_punto_y_coma(char *texto);
+char *siguiente_campo(char *texto);
+
+// pokedex y equipos
+int buscar_en_pokedex(int numero);
+int buscar_especie(const char *nombre);
+void imprimir_ficha_pokedex(int indice);
+void imprimir_fila_pokedex(int indice);
+void imprimir_catalogo_compacto(void);
+void crear_ejemplar(EjemplarPokemon *e, int iu, int indice_pokedex, const char *apodo);
+void imprimir_equipo(int indice);
+int contar_equipos_completos(void);
+void listar_entrenadores_cortos(void);
+void guardar_equipos_archivo(void);
+void cargar_equipos_archivo(void);
+
+// simulador de combates con los equipos (usa el motor de combate 1v1)
+void simular_combate_equipos(int a, int b, int *der_a, int *der_b);
+void simular_combate_torneo(void);
 
 
 // ===========================================================================
@@ -1107,38 +1236,49 @@ void anunciar_avance(int numero){
 void cargar_resultado_teclado(void){
     int numero, id1, id2, der1, der2, error, otro = 1;
 
+    limpiar_pantalla();
+    titulo("CARGAR RESULTADO POR TECLADO");
+
     if(preparar_torneo()){
         while(otro && !fin_de_entrada){
-            numero = leer_entero("\nNumero de combate (1-64): ", 1, COMBATES_TOTALES);
+            numero = leer_entero("\n  Numero de combate (1-64): ", 1, COMBATES_TOTALES);
 
             if(!fin_de_entrada){
                 if(combates[numero].id1 != 0 && combates[numero].id2 != 0){
-                    printf("Combate %d (%s): %s (ID %d) vs %s (ID %d)\n", numero, nombre_ronda(numero),
+                    printf("\n  Combate %d (%s): %s (ID %d) vs %s (ID %d)\n", numero, nombre_ronda(numero),
                            nombre_de(combates[numero].id1), combates[numero].id1,
                            nombre_de(combates[numero].id2), combates[numero].id2);
                 }
 
-                id1 = leer_entero("ID del entrenador 1: ", 1, 999999);
-                id2 = leer_entero("ID del entrenador 2: ", 1, 999999);
-                der1 = leer_entero("Pokemon rivales derrotados por el entrenador 1 (0-6): ", 0, POKEMON_POR_EQUIPO);
-                der2 = leer_entero("Pokemon rivales derrotados por el entrenador 2 (0-6): ", 0, POKEMON_POR_EQUIPO);
+                id1 = leer_entero("  ID del entrenador 1: ", 1, 999999);
+                id2 = leer_entero("  ID del entrenador 2: ", 1, 999999);
+                der1 = leer_entero("  Pokemon rivales derrotados por el entrenador 1 (0-6): ", 0, POKEMON_POR_EQUIPO);
+                der2 = leer_entero("  Pokemon rivales derrotados por el entrenador 2 (0-6): ", 0, POKEMON_POR_EQUIPO);
 
                 if(!fin_de_entrada){
                     error = registrar_resultado(numero, id1, id2, der1, der2);
 
                     if(error == 0){
-                        printf("\nResultado registrado:\n");
+                        printf("\n  " C_VERDE "Resultado registrado:" C_RESET "\n");
                         imprimir_combate(stdout, numero);
                         anunciar_avance(numero);
                     } else {
-                        printf("\nNo se pudo registrar: %s\n", texto_error(error));
+                        printf("\n  " C_ROJO "No se pudo registrar:" C_RESET " %s\n", texto_error(error));
                     }
-                    otro = leer_entero("\nCargar otro resultado? (1 = si, 0 = no): ", 0, 1);
+                    otro = leer_entero("\n  Cargar otro resultado? (1 = si, 0 = no): ", 0, 1);
+
+                    if(otro && !fin_de_entrada){
+                        limpiar_pantalla();
+                        titulo("CARGAR RESULTADO POR TECLADO");
+                    }
                 }
             }
         }
+    } else {
+        pausa(); // se leyo el motivo por el que todavia no se puede jugar
     }
 }
+
 
 // carga resultados desde un archivo de texto. cada linea: numero_combate id1 id2 derrotados1 derrotados2
 // las lineas vacias o que empiezan con # se ignoran. permite cargar resultados parciales y no importa el orden de las lineas:
@@ -1383,45 +1523,70 @@ void imprimir_historial(FILE *s){
 // 5. MENU PRINCIPAL Y OPCIONES
 // ===========================================================================
 
-// dibuja el menu con las 12 opciones
+// dibuja el menu con las 12 opciones (con el logo y un resumen del estado del torneo)
 void mostrar_menu(void){
-    printf("\n========================================\n");
-    printf("          TORNEO POKEMON - MENU\n");
-    printf("========================================\n");
-    printf("  1. Consultar Pokedex\n");
-    printf("  2. Registrar entrenador\n");
-    printf("  3. Crear equipo\n");
-    printf("  4. Consultar entrenadores\n");
-    printf("  5. Consultar equipos\n");
-    printf("  6. Cargar resultados\n");
-    printf("  7. Consultar clasificacion\n");
-    printf("  8. Consultar enfrentamientos\n");
-    printf("  9. Historial\n");
-    printf(" 10. Resultados globales\n");
-    printf(" 11. Mostrar campeon\n");
-    printf(" 12. Salir\n");
-    printf("========================================\n");
+    char estado[100];
+
+    imprimir_logo();
+    printf("\n");
+    borde();
+    sprintf(estado, "Entrenadores: %d/%d   Equipos listos: %d   Combates: %d/%d", total_entrenadores,
+            MAX_ENTRENADORES, contar_equipos_completos(), total_historial, COMBATES_TOTALES);
+    fila(estado);
+    borde();
+    fila_seccion("ENTRENADORES Y EQUIPOS");
+    opcion_menu(1, "Consultar Pokedex");
+    opcion_menu(2, "Registrar entrenador");
+    opcion_menu(3, "Crear equipo");
+    opcion_menu(4, "Consultar entrenadores");
+    opcion_menu(5, "Consultar equipos");
+    fila("");
+    fila_seccion("TORNEO");
+    opcion_menu(6, "Cargar resultados");
+    opcion_menu(7, "Consultar clasificacion");
+    opcion_menu(8, "Consultar enfrentamientos");
+    opcion_menu(9, "Historial");
+    opcion_menu(10, "Resultados globales");
+    opcion_menu(11, "Mostrar campeon");
+    fila("");
+    opcion_menu(12, "Salir");
+    borde();
 }
 
-// opcion 6: elige si los resultados se cargan por teclado o desde un archivo
+// opcion 6: elige si los resultados se cargan por teclado, desde un archivo o simulando el combate con los equipos
 void menu_cargar_resultados(void){
-    int opcion;
+    int opcion = -1;
     char archivo[100];
 
-    printf("\n--- CARGAR RESULTADOS ---\n");
-    printf("  1. Por teclado\n");
-    printf("  2. Desde un archivo de texto\n");
-    printf("  0. Volver\n");
-    opcion = leer_entero("Elige una opcion: ", 0, 2);
+    while(opcion != 0 && !fin_de_entrada){
+        limpiar_pantalla();
+        titulo("CARGAR RESULTADOS");
+        borde();
+        opcion_menu(1, "Por teclado");
+        opcion_menu(2, "Desde un archivo de texto");
+        opcion_menu(3, "Simular un combate con los equipos (automatico)");
+        opcion_menu(0, "Volver");
+        borde();
+        opcion = leer_entero("  Elige una opcion: ", 0, 3);
 
-    if(!fin_de_entrada){
-        if(opcion == 1){
-            cargar_resultado_teclado();
-        } else if(opcion == 2){
-            printf("Formato de cada linea: numero_combate id1 id2 derrotados1 derrotados2\n");
-            leer_texto("Nombre del archivo (ej: resultados.txt): ", archivo, sizeof(archivo));
-            if(!fin_de_entrada){
-                cargar_resultados_archivo(archivo);
+        if(!fin_de_entrada){
+            if(opcion == 1){
+                cargar_resultado_teclado();
+            } else if(opcion == 2){
+                limpiar_pantalla();
+                titulo("CARGAR DESDE ARCHIVO");
+                printf("  Formato de cada linea: numero_combate id1 id2 derrotados1 derrotados2\n\n");
+                leer_texto("  Nombre del archivo (ej: resultados.txt): ", archivo, sizeof(archivo));
+                if(!fin_de_entrada){
+                    printf("\n");
+                    cargar_resultados_archivo(archivo);
+                    pausa();
+                }
+            } else if(opcion == 3){
+                limpiar_pantalla();
+                titulo("SIMULADOR DE COMBATE");
+                simular_combate_torneo();
+                pausa();
             }
         }
     }
@@ -1430,6 +1595,8 @@ void menu_cargar_resultados(void){
 // opcion 7: muestra las tablas de cada grupo y ofrece exportarlas a un archivo
 void consultar_clasificacion(void){
     int exportar;
+
+    titulo("CLASIFICACION");
 
     if(preparar_torneo()){
         imprimir_clasificacion(stdout);
@@ -1449,6 +1616,8 @@ void consultar_clasificacion(void){
 void consultar_enfrentamientos(void){
     int fase;
 
+    titulo("ENFRENTAMIENTOS");
+
     if(preparar_torneo()){
         printf("\n  1. Fase de grupos\n");
         printf("  2. Fase eliminatoria\n");
@@ -1463,6 +1632,8 @@ void consultar_enfrentamientos(void){
 // opcion 9: muestra el historial y ofrece guardarlo en un archivo
 void consultar_historial(void){
     int guardar;
+
+    titulo("HISTORIAL DE RESULTADOS");
 
     imprimir_historial(stdout);
 
@@ -1484,6 +1655,8 @@ void mostrar_resultados_globales(void){
     int i, j, k, temporal, mover, jugados_grupos = 0, jugados_elim = 0, n;
     int orden[MAX_ENTRENADORES];
 
+    titulo("RESULTADOS GLOBALES");
+
     if(preparar_torneo()){
         for(n = 1; n <= COMBATES_GRUPOS; n++){
             if(combates[n].jugado){
@@ -1496,7 +1669,6 @@ void mostrar_resultados_globales(void){
             }
         }
 
-        printf("\n===== RESULTADOS GLOBALES =====\n");
         printf("Entrenadores: %d | Grupos: %d\n", total_entrenadores, total_grupos);
         printf("Combates de grupos jugados: %d/%d\n", jugados_grupos, total_grupos * COMBATES_POR_GRUPO);
         if(total_grupos == MAX_GRUPOS){
@@ -1540,38 +1712,51 @@ void mostrar_resultados_globales(void){
 
 // opcion 11: muestra el podio oficial (solo cuando la final y el tercer puesto ya se jugaron)
 void mostrar_campeon(void){
+    titulo("CAMPEON DEL TORNEO");
+
     if(preparar_torneo()){
         if(total_grupos != MAX_GRUPOS){
             printf("\nLa fase eliminatoria solo se habilita con %d entrenadores (%d grupos). Hay %d registrados.\n",
                    MAX_ENTRENADORES, MAX_GRUPOS, total_entrenadores);
         } else {
+            if(torneo_terminado()){
+                imprimir_trofeo();
+            }
             imprimir_podio(stdout);
         }
     }
 }
 
-// ciclo principal del programa: muestra el menu y ejecuta la opcion elegida hasta que se elija 12 (salir)
+// ciclo principal del programa: limpia la pantalla, muestra el menu y ejecuta la opcion elegida hasta que se elija 12 (salir)
 void menu_principal(void){
     int opcion = 0;
 
     while(opcion != 12 && !fin_de_entrada){
+        limpiar_pantalla();
         mostrar_menu();
-        opcion = leer_entero("Elige una opcion (1-12): ", 1, 12);
+        opcion = leer_entero("  Elige una opcion (1-12): ", 1, 12);
 
         if(!fin_de_entrada){
+            limpiar_pantalla();
+
+            // las opciones 1, 5 y 6 tienen su propio submenu (y sus propias pausas); las demas hacen una pausa al terminar
             switch(opcion){
-                case 1:  consultar_pokedex();             break;
-                case 2:  registrar_entrenador();          break;
-                case 3:  crear_equipo();                  break;
-                case 4:  consultar_entrenadores();        break;
-                case 5:  consultar_equipos();             break;
-                case 6:  menu_cargar_resultados();        break;
-                case 7:  consultar_clasificacion();       break;
-                case 8:  consultar_enfrentamientos();     break;
-                case 9:  consultar_historial();           break;
-                case 10: mostrar_resultados_globales();   break;
-                case 11: mostrar_campeon();               break;
-                case 12: printf("\nHasta luego!\n");      break;
+                case 1:  consultar_pokedex();                          break;
+                case 2:  registrar_entrenador();         pausa();      break;
+                case 3:  crear_equipo();                 pausa();      break;
+                case 4:  consultar_entrenadores();       pausa();      break;
+                case 5:  consultar_equipos();                          break;
+                case 6:  menu_cargar_resultados();                     break;
+                case 7:  consultar_clasificacion();      pausa();      break;
+                case 8:  consultar_enfrentamientos();    pausa();      break;
+                case 9:  consultar_historial();          pausa();      break;
+                case 10: mostrar_resultados_globales();  pausa();      break;
+                case 11: mostrar_campeon();              pausa();      break;
+                case 12:
+                    printf("\n");
+                    imprimir_logo();
+                    printf("\n  Gracias por jugar. Hasta la proxima, entrenador!\n\n");
+                    break;
             }
         }
     }
@@ -1579,12 +1764,190 @@ void menu_principal(void){
 
 
 // ===========================================================================
-// VERSIONES PROVISIONALES DE LAS OPCIONES 1 A 5 (de otros integrantes)
+// OPCIONES 1 A 5 DEL MENU (VERSION DEFINITIVA)
 // ===========================================================================
-// sirven para que el menu compile y se pueda probar el torneo ya mismo.
-// cuando existan las funciones reales de tus companeros, quita el #define USAR_FUNCIONES_PROVISIONALES de arriba
-// (y ajusta los nombres si sus funciones se llaman distinto o reciben parametros)
-#ifdef USAR_FUNCIONES_PROVISIONALES
+// pokedex, registro de entrenadores, creacion y consulta de equipos.
+// tambien incluye todo lo visual: pantalla limpia, marcos, colores, barras y logo
+
+
+// ===========================================================================
+// ASPECTO VISUAL
+// ===========================================================================
+
+// borra la pantalla (cls en Windows, clear en Linux y Mac)
+void limpiar_pantalla(void){
+    #ifdef _WIN32
+    system("cls");
+    #else
+    system("clear");
+    #endif
+}
+
+// detiene el programa hasta que el usuario presione ENTER (para que alcance a leer antes de borrar la pantalla)
+void pausa(void){
+    char buffer[100];
+
+    if(!fin_de_entrada){
+        printf("\n  " C_GRIS "Presiona ENTER para continuar..." C_RESET);
+        if(fgets(buffer, sizeof(buffer), stdin) == NULL){
+            fin_de_entrada = 1;
+        }
+    }
+}
+
+// imprime un mismo caracter varias veces seguidas (sirve para dibujar lineas y espacios)
+void linea_de(char c, int cantidad){
+    int i;
+
+    for(i = 0; i < cantidad; i++){
+        putchar(c);
+    }
+}
+
+// linea horizontal de un marco
+void borde(void){
+    printf("  " C_CIAN "+");
+    linea_de('-', ANCHO);
+    printf("+" C_RESET "\n");
+}
+
+// fila de un marco con un texto normal
+void fila(const char *texto){
+    printf("  " C_CIAN "|" C_RESET " %-58.58s " C_CIAN "|" C_RESET "\n", texto);
+}
+
+// fila de un marco con el nombre de una seccion (en otro color)
+void fila_seccion(const char *texto){
+    printf("  " C_CIAN "|" C_RESET " " C_MAGENTA "%-58.58s" C_RESET " " C_CIAN "|" C_RESET "\n", texto);
+}
+
+// fila de un marco con una opcion numerada del menu
+void opcion_menu(int numero, const char *texto){
+    printf("  " C_CIAN "|" C_RESET "  " C_AMARILLO "[%2d]" C_RESET " %-52.52s " C_CIAN "|" C_RESET "\n", numero, texto);
+}
+
+// cabecera de cada pantalla: un marco con el titulo centrado
+void titulo(const char *texto){
+    int largo = (int)strlen(texto);
+    int izquierda = (ANCHO - largo) / 2;
+    int derecha = ANCHO - largo - izquierda;
+
+    if(izquierda < 0){
+        izquierda = 0;
+        derecha = 0;
+    }
+
+    printf("\n  " C_CIAN "+");
+    linea_de('=', ANCHO);
+    printf("+" C_RESET "\n");
+
+    printf("  " C_CIAN "|" C_RESET);
+    linea_de(' ', izquierda);
+    printf(C_AMARILLO "%s" C_RESET, texto);
+    linea_de(' ', derecha);
+    printf(C_CIAN "|" C_RESET "\n");
+
+    printf("  " C_CIAN "+");
+    linea_de('=', ANCHO);
+    printf("+" C_RESET "\n\n");
+}
+
+// dibuja una pokebola con el nombre del torneo
+void imprimir_logo(void){
+    printf("\n");
+    printf(C_ROJO "         .-------." C_RESET "\n");
+    printf(C_ROJO "       /   .---.   \\" C_RESET "     " C_AMARILLO "P O K E M O N" C_RESET "\n");
+    printf(C_BLANCO "      |---(  O  )---|" C_RESET "    " C_CIAN "T O R N E O   O F I C I A L" C_RESET "\n");
+    printf(C_BLANCO "       \\   '---'   /" C_RESET "     " C_GRIS "grupos, eliminatorias y gloria" C_RESET "\n");
+    printf(C_BLANCO "         '-------'" C_RESET "\n");
+}
+
+// dibuja un trofeo (se muestra cuando ya hay campeon)
+void imprimir_trofeo(void){
+    printf(C_AMARILLO "\n");
+    printf("           ___________\n");
+    printf("          |  _______  |\n");
+    printf("       .--| |   *   | |--.\n");
+    printf("       '--| |_______| |--'\n");
+    printf("          \\___________/\n");
+    printf("              |   |\n");
+    printf("            __|___|__\n");
+    printf("           |_________|\n");
+    printf(C_RESET "\n");
+}
+
+// dibuja una barra de estadistica, por ejemplo [#######-------]. el color cambia segun lo llena que este
+void imprimir_barra(int valor, int maximo, int ancho){
+    int lleno = valor * ancho / maximo;
+    int i;
+    const char *color;
+
+    if(lleno > ancho){
+        lleno = ancho;
+    }
+    if(lleno < 1 && valor > 0){
+        lleno = 1;
+    }
+
+    if(lleno * 3 >= ancho * 2){
+        color = C_VERDE;
+    } else if(lleno * 3 >= ancho){
+        color = C_AMARILLO;
+    } else {
+        color = C_ROJO;
+    }
+
+    printf("[%s", color);
+    for(i = 0; i < lleno; i++){
+        putchar('#');
+    }
+    printf("%s", C_GRIS);
+    for(i = lleno; i < ancho; i++){
+        putchar('-');
+    }
+    printf(C_RESET "]");
+}
+
+// imprime el nombre de un tipo con su color, siempre ocupando 9 espacios para que las tablas queden alineadas
+void imprimir_tipo(int id){
+    if(id < 0 || id > 18){
+        id = 0;
+    }
+    printf("%s%-9s" C_RESET, COLORES_TIPO[id], NOMBRES_TIPO[id]);
+}
+
+
+// ===========================================================================
+// UTILIDADES DE TEXTO
+// ===========================================================================
+
+// cambia los ; de un texto por espacios (el ; se usa como separador en los archivos)
+void reemplazar_punto_y_coma(char *texto){
+    int i;
+
+    for(i = 0; texto[i] != '\0'; i++){
+        if(texto[i] == ';'){
+            texto[i] = ' ';
+        }
+    }
+}
+
+// corta el texto en el primer ; y devuelve la direccion de lo que viene despues (o NULL si no hay ;)
+char *siguiente_campo(char *texto){
+    char *separador = strchr(texto, ';');
+    char *resto = NULL;
+
+    if(separador != NULL){
+        *separador = '\0';
+        resto = separador + 1;
+    }
+    return resto;
+}
+
+
+// ===========================================================================
+// ENTRENADORES (opciones 2 y 4)
+// ===========================================================================
 
 // llena los datos iniciales de un entrenador nuevo
 void iniciar_entrenador(int indice, int id, const char *nombre){
@@ -1636,29 +1999,35 @@ void cargar_entrenadores_archivo(void){
     }
 }
 
-void consultar_pokedex(void){
-    printf("\n[Pendiente] La consulta de Pokedex la implementa otro integrante del equipo.\n");
+// cuenta cuantos entrenadores ya tienen su equipo completo
+int contar_equipos_completos(void){
+    int i, cantidad = 0;
+
+    for(i = 0; i < total_entrenadores; i++){
+        if(tamano_equipo[i] == POKEMON_POR_EQUIPO){
+            cantidad++;
+        }
+    }
+    return cantidad;
 }
 
-// registro minimo: pide el nombre y asigna un ID correlativo
+// opcion 2: registra un entrenador nuevo (pide el nombre y le asigna un ID correlativo)
 void registrar_entrenador(void){
     char nombre[50];
     int i, id = 0;
 
+    titulo("REGISTRAR ENTRENADOR");
+
     if(total_historial > 0){
-        printf("\nNo se pueden registrar entrenadores porque ya hay resultados cargados.\n");
+        printf("  " C_ROJO "No se pueden registrar entrenadores porque ya hay resultados cargados." C_RESET "\n");
     } else if(total_entrenadores >= MAX_ENTRENADORES){
-        printf("\nSe alcanzo el maximo de %d entrenadores.\n", MAX_ENTRENADORES);
+        printf("  " C_ROJO "Se alcanzo el maximo de %d entrenadores." C_RESET "\n", MAX_ENTRENADORES);
     } else {
-        leer_texto("\nNombre del entrenador: ", nombre, sizeof(nombre));
+        printf("  Entrenadores registrados: %d/%d\n\n", total_entrenadores, MAX_ENTRENADORES);
+        leer_texto("  Nombre del entrenador: ", nombre, sizeof(nombre));
 
         if(!fin_de_entrada){
-            // el ; se usa como separador en el archivo, asi que se cambia por un espacio
-            for(i = 0; nombre[i] != '\0'; i++){
-                if(nombre[i] == ';'){
-                    nombre[i] = ' ';
-                }
-            }
+            reemplazar_punto_y_coma(nombre);
 
             // el nuevo ID es el mayor existente + 1
             for(i = 0; i < total_entrenadores; i++){
@@ -1671,35 +2040,611 @@ void registrar_entrenador(void){
             iniciar_entrenador(total_entrenadores, id, nombre);
             total_entrenadores++;
             guardar_entrenadores_archivo();
-            printf("Entrenador registrado con ID %d (%d/%d).\n", id, total_entrenadores, MAX_ENTRENADORES);
+
+            printf("\n  " C_VERDE "Entrenador registrado!" C_RESET " ID %d (%d/%d)\n", id, total_entrenadores, MAX_ENTRENADORES);
+            printf("  Ahora crea su equipo con la opcion 3 del menu.\n");
         }
     }
 }
 
-void crear_equipo(void){
-    printf("\n[Pendiente] La creacion de equipos la implementa otro integrante del equipo.\n");
-}
-
+// opcion 4: tabla con todos los entrenadores registrados
 void consultar_entrenadores(void){
     int i;
 
+    titulo("ENTRENADORES REGISTRADOS");
+
     if(total_entrenadores == 0){
-        printf("\nNo hay entrenadores registrados.\n");
+        printf("  No hay entrenadores registrados todavia (usa la opcion 2).\n");
     } else {
-        printf("\n%-5s %-20s %-14s %3s %3s %3s %4s\n", "ID", "Entrenador", "Equipo", "PG", "PE", "PP", "Pts");
+        printf("  %-5s %-20s %-16s %-4s %3s %3s %3s %4s\n", "ID", "Entrenador", "Equipo", "Pok", "PG", "PE", "PP", "Pts");
+        printf("  ");
+        linea_de('-', 62);
+        printf("\n");
         for(i = 0; i < total_entrenadores; i++){
-            printf("%-5d %-20.20s %-14.14s %3d %3d %3d %4d\n", entrenadores[i].Identificador, entrenadores[i].Nombre,
-                   entrenadores[i].Equipo_Pokemon, entrenadores[i].Cantidad_de_victorias, entrenadores[i].Cantidad_de_empates,
-                   entrenadores[i].Cantidad_de_derrotas, entrenadores[i].Puntuacion);
+            printf("  %-5d %-20.20s %-16.16s %d/%d  %3d %3d %3d %4d\n", entrenadores[i].Identificador, entrenadores[i].Nombre,
+                   entrenadores[i].Equipo_Pokemon, tamano_equipo[i], POKEMON_POR_EQUIPO, entrenadores[i].Cantidad_de_victorias,
+                   entrenadores[i].Cantidad_de_empates, entrenadores[i].Cantidad_de_derrotas, entrenadores[i].Puntuacion);
+        }
+        printf("\n  Pok = pokemon en el equipo | PG = ganados | PE = empates | PP = perdidos | Pts = puntos\n");
+    }
+}
+
+// lista corta de entrenadores (ID, nombre y equipo) para elegir uno
+void listar_entrenadores_cortos(void){
+    int i;
+
+    printf("  %-5s %-20s %s\n", "ID", "Entrenador", "Equipo");
+    for(i = 0; i < total_entrenadores; i++){
+        printf("  %-5d %-20.20s %s\n", entrenadores[i].Identificador, entrenadores[i].Nombre, entrenadores[i].Equipo_Pokemon);
+    }
+    printf("\n");
+}
+
+
+// ===========================================================================
+// POKEDEX (opcion 1)
+// ===========================================================================
+
+// busca una especie por su numero de pokedex y devuelve su posicion en el catalogo (o -1 si no existe)
+int buscar_en_pokedex(int numero){
+    int i = 0, indice = -1;
+
+    while(i < TOTAL_POKEDEX && indice < 0){
+        if(catalogo_pokedex[i].N_Pokedex == numero){
+            indice = i;
+        }
+        i++;
+    }
+    return indice;
+}
+
+// busca una especie por su nombre y devuelve su posicion en el catalogo (o -1 si no existe)
+int buscar_especie(const char *nombre){
+    int i = 0, indice = -1;
+
+    while(i < TOTAL_POKEDEX && indice < 0){
+        if(strcmp(catalogo_pokedex[i].Nombre_de_pokedex, nombre) == 0){
+            indice = i;
+        }
+        i++;
+    }
+    return indice;
+}
+
+// ficha completa de una especie, con barras para sus estadisticas base
+void imprimir_ficha_pokedex(int indice){
+    const Pokedex *p = &catalogo_pokedex[indice];
+
+    printf("  " C_AMARILLO "#%03d  %s" C_RESET "\n\n", p->N_Pokedex, p->Nombre_de_pokedex);
+
+    printf("  Tipo       ");
+    imprimir_tipo(p->Valor_T_Primario);
+    if(p->Valor_T_Secundario > 0){
+        printf(" ");
+        imprimir_tipo(p->Valor_T_Secundario);
+    }
+    printf("\n\n");
+
+    printf("  HP         ");
+    imprimir_barra(p->Hp_base, MAX_STAT, 20);
+    printf(" %3d\n", p->Hp_base);
+
+    printf("  Ataque     ");
+    imprimir_barra(p->Ataque_base, MAX_STAT, 20);
+    printf(" %3d\n", p->Ataque_base);
+
+    printf("  Defensa    ");
+    imprimir_barra(p->Defensa_base, MAX_STAT, 20);
+    printf(" %3d\n", p->Defensa_base);
+
+    printf("  Velocidad  ");
+    imprimir_barra(p->Velocidad_base, MAX_STAT, 20);
+    printf(" %3d\n", p->Velocidad_base);
+}
+
+// una linea de la tabla del catalogo
+void imprimir_fila_pokedex(int indice){
+    const Pokedex *p = &catalogo_pokedex[indice];
+
+    printf("  #%03d %-11s ", p->N_Pokedex, p->Nombre_de_pokedex);
+    imprimir_tipo(p->Valor_T_Primario);
+    printf(" ");
+    imprimir_tipo(p->Valor_T_Secundario);
+    printf(" %4d %4d %4d %4d\n", p->Hp_base, p->Ataque_base, p->Defensa_base, p->Velocidad_base);
+}
+
+// opcion 1: catalogo completo por paginas, busqueda por numero o busqueda por tipo
+void consultar_pokedex(void){
+    int opcion = -1, accion, pagina, total_paginas, numero, indice, tipo, i, r, c, encontrados;
+
+    while(opcion != 0 && !fin_de_entrada){
+        limpiar_pantalla();
+        titulo("POKEDEX");
+        printf("  Especies registradas: %d\n\n", TOTAL_POKEDEX);
+        borde();
+        opcion_menu(1, "Ver el catalogo completo");
+        opcion_menu(2, "Buscar por numero de pokedex");
+        opcion_menu(3, "Buscar por tipo");
+        opcion_menu(0, "Volver");
+        borde();
+        opcion = leer_entero("  Elige una opcion: ", 0, 3);
+
+        if(!fin_de_entrada){
+            if(opcion == 1){
+                // catalogo paginado: POR_PAGINA especies por pantalla
+                pagina = 0;
+                accion = 1;
+                total_paginas = (TOTAL_POKEDEX + POR_PAGINA - 1) / POR_PAGINA;
+
+                while(accion != 0 && !fin_de_entrada){
+                    limpiar_pantalla();
+                    titulo("CATALOGO POKEDEX");
+                    printf("  %-5s %-11s %-9s %-9s %4s %4s %4s %4s\n", "N#", "Pokemon", "Tipo 1", "Tipo 2", "HP", "ATK", "DEF", "VEL");
+                    printf("  ");
+                    linea_de('-', 56);
+                    printf("\n");
+
+                    for(i = pagina * POR_PAGINA; i < (pagina + 1) * POR_PAGINA && i < TOTAL_POKEDEX; i++){
+                        imprimir_fila_pokedex(i);
+                    }
+
+                    printf("\n  Pagina %d de %d\n", pagina + 1, total_paginas);
+                    accion = leer_entero("  1 = siguiente | 2 = anterior | 0 = volver: ", 0, 2);
+
+                    if(accion == 1 && pagina < total_paginas - 1){
+                        pagina++;
+                    } else if(accion == 2 && pagina > 0){
+                        pagina--;
+                    }
+                }
+            } else if(opcion == 2){
+                limpiar_pantalla();
+                titulo("BUSCAR POR NUMERO");
+                numero = leer_entero("  Numero de pokedex (ej: 25): ", 1, 999);
+
+                if(!fin_de_entrada){
+                    indice = buscar_en_pokedex(numero);
+                    limpiar_pantalla();
+                    titulo("FICHA POKEDEX");
+                    if(indice < 0){
+                        printf("  " C_ROJO "El numero %d no esta en la pokedex." C_RESET " Mira el catalogo para ver los disponibles.\n", numero);
+                    } else {
+                        imprimir_ficha_pokedex(indice);
+                    }
+                    pausa();
+                }
+            } else if(opcion == 3){
+                limpiar_pantalla();
+                titulo("BUSCAR POR TIPO");
+
+                // muestra los 18 tipos en 3 columnas
+                for(r = 0; r < 6; r++){
+                    printf("  ");
+                    for(c = 0; c < 3; c++){
+                        printf(C_AMARILLO "[%2d]" C_RESET " ", r + c * 6 + 1);
+                        imprimir_tipo(r + c * 6 + 1);
+                        printf("   ");
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+                tipo = leer_entero("  Elige un tipo (1-18): ", 1, 18);
+
+                if(!fin_de_entrada){
+                    limpiar_pantalla();
+                    titulo("POKEMON DEL TIPO ELEGIDO");
+                    printf("  %-5s %-11s %-9s %-9s %4s %4s %4s %4s\n", "N#", "Pokemon", "Tipo 1", "Tipo 2", "HP", "ATK", "DEF", "VEL");
+                    printf("  ");
+                    linea_de('-', 56);
+                    printf("\n");
+
+                    encontrados = 0;
+                    for(i = 0; i < TOTAL_POKEDEX; i++){
+                        if(catalogo_pokedex[i].Valor_T_Primario == tipo || catalogo_pokedex[i].Valor_T_Secundario == tipo){
+                            imprimir_fila_pokedex(i);
+                            encontrados++;
+                        }
+                    }
+                    if(encontrados == 0){
+                        printf("  No hay pokemon de ese tipo en el catalogo.\n");
+                    } else {
+                        printf("\n  Encontrados: %d\n", encontrados);
+                    }
+                    pausa();
+                }
+            }
         }
     }
 }
 
-void consultar_equipos(void){
-    printf("\n[Pendiente] La consulta de equipos la implementa otro integrante del equipo.\n");
+
+// ===========================================================================
+// EQUIPOS (opciones 3 y 5)
+// ===========================================================================
+
+// arma un ejemplar a partir de una especie del catalogo: copia sus estadisticas base y sus tipos
+void crear_ejemplar(EjemplarPokemon *e, int iu, int indice_pokedex, const char *apodo){
+    e->IU = iu;
+    strcpy(e->Especie, catalogo_pokedex[indice_pokedex].Nombre_de_pokedex);
+    strncpy(e->Nombre, apodo, 49);
+    e->Nombre[49] = '\0';
+    e->Nivel = NIVEL_EQUIPO;
+    e->Hp = catalogo_pokedex[indice_pokedex].Hp_base;
+    e->Ataque = catalogo_pokedex[indice_pokedex].Ataque_base;
+    e->Defensa = catalogo_pokedex[indice_pokedex].Defensa_base;
+    e->Velocidad = catalogo_pokedex[indice_pokedex].Velocidad_base;
+    e->Valor_T_Primario = catalogo_pokedex[indice_pokedex].Valor_T_Primario;
+    e->Valor_T_Secundario = catalogo_pokedex[indice_pokedex].Valor_T_Secundario;
+    e->Estado_actual = 1;
 }
 
-#endif
+// muestra el catalogo en dos columnas (numero, nombre y tipo principal) para elegir pokemon al armar un equipo
+void imprimir_catalogo_compacto(void){
+    int fila_actual, mitad = (TOTAL_POKEDEX + 1) / 2, derecha;
+
+    for(fila_actual = 0; fila_actual < mitad; fila_actual++){
+        printf("  #%03d %-11s ", catalogo_pokedex[fila_actual].N_Pokedex, catalogo_pokedex[fila_actual].Nombre_de_pokedex);
+        imprimir_tipo(catalogo_pokedex[fila_actual].Valor_T_Primario);
+
+        derecha = fila_actual + mitad;
+        if(derecha < TOTAL_POKEDEX){
+            printf("   #%03d %-11s ", catalogo_pokedex[derecha].N_Pokedex, catalogo_pokedex[derecha].Nombre_de_pokedex);
+            imprimir_tipo(catalogo_pokedex[derecha].Valor_T_Primario);
+        }
+        printf("\n");
+    }
+}
+
+// muestra el equipo de un entrenador (por su posicion en el arreglo) como una tabla
+void imprimir_equipo(int indice){
+    int i;
+    const EjemplarPokemon *e;
+
+    printf("  Entrenador: " C_AMARILLO "%s" C_RESET " (ID %d)\n", entrenadores[indice].Nombre, entrenadores[indice].Identificador);
+
+    if(tamano_equipo[indice] == 0){
+        printf("  Todavia no tiene equipo (usa la opcion 3 del menu).\n");
+    } else {
+        printf("  Equipo:     " C_CIAN "%s" C_RESET "  (%d/%d pokemon)\n\n", entrenadores[indice].Equipo_Pokemon,
+               tamano_equipo[indice], POKEMON_POR_EQUIPO);
+        printf("  %-2s %-12s %-11s %-9s %-9s %2s %4s %4s %4s %4s\n", "#", "Apodo", "Especie", "Tipo 1", "Tipo 2", "Nv", "HP", "ATK", "DEF", "VEL");
+        printf("  ");
+        linea_de('-', 70);
+        printf("\n");
+
+        for(i = 0; i < tamano_equipo[indice]; i++){
+            e = &equipos[indice][i];
+            printf("  %-2d %-12.12s %-11.11s ", i + 1, e->Nombre, e->Especie);
+            imprimir_tipo(e->Valor_T_Primario);
+            printf(" ");
+            imprimir_tipo(e->Valor_T_Secundario);
+            printf(" %2d %4d %4d %4d %4d\n", e->Nivel, e->Hp, e->Ataque, e->Defensa, e->Velocidad);
+        }
+    }
+}
+
+// guarda todos los equipos en equipos.txt (una linea por pokemon: id_entrenador;nombre_equipo;especie;apodo)
+void guardar_equipos_archivo(void){
+    FILE *f = fopen(ARCHIVO_EQUIPOS, "w");
+    int i, j;
+
+    if(f != NULL){
+        for(i = 0; i < total_entrenadores; i++){
+            for(j = 0; j < tamano_equipo[i]; j++){
+                fprintf(f, "%d;%s;%s;%s\n", entrenadores[i].Identificador, entrenadores[i].Equipo_Pokemon,
+                        equipos[i][j].Especie, equipos[i][j].Nombre);
+            }
+        }
+        fclose(f);
+    }
+}
+
+// lee equipos.txt al iniciar el programa (si existe) para recuperar los equipos de ejecuciones anteriores
+void cargar_equipos_archivo(void){
+    FILE *f = fopen(ARCHIVO_EQUIPOS, "r");
+    char linea[300];
+    char *nombre_equipo, *especie, *apodo;
+    int id, indice, posicion_pokedex;
+
+    if(f != NULL){
+        while(fgets(linea, sizeof(linea), f) != NULL){
+            limpiar_linea(linea);
+
+            // separa los 4 datos de la linea (la linea queda con el id y los demas apuntan a su texto)
+            nombre_equipo = siguiente_campo(linea);
+            if(nombre_equipo != NULL){
+                especie = siguiente_campo(nombre_equipo);
+                if(especie != NULL){
+                    apodo = siguiente_campo(especie);
+                    if(apodo != NULL && apodo[0] != '\0'){
+                        id = atoi(linea);
+                        indice = buscar_entrenador(id);
+                        posicion_pokedex = buscar_especie(especie);
+
+                        if(indice >= 0 && posicion_pokedex >= 0 && tamano_equipo[indice] < POKEMON_POR_EQUIPO){
+                            crear_ejemplar(&equipos[indice][tamano_equipo[indice]], id * 10 + tamano_equipo[indice] + 1, posicion_pokedex, apodo);
+                            tamano_equipo[indice]++;
+                            strncpy(entrenadores[indice].Equipo_Pokemon, nombre_equipo, 49);
+                            entrenadores[indice].Equipo_Pokemon[49] = '\0';
+                        }
+                    }
+                }
+            }
+        }
+        fclose(f);
+    }
+}
+
+// opcion 3: arma el equipo de 6 pokemon de un entrenador eligiendo del catalogo y poniendole apodo a cada uno
+void crear_equipo(void){
+    EjemplarPokemon nuevo[POKEMON_POR_EQUIPO]; // equipo en construccion (solo se guarda si se completa)
+    int elegidos[POKEMON_POR_EQUIPO];          // posicion en el catalogo de cada pokemon elegido
+    char apodo[50], nombre_equipo[50], mensaje[100];
+    int id, indice, i, j, numero, posicion_pokedex, repetido, valido, cancelado = 0, confirmar = 1;
+
+    titulo("CREAR EQUIPO");
+
+    if(total_entrenadores == 0){
+        printf("  Primero debes registrar un entrenador (opcion 2 del menu).\n");
+    } else {
+        listar_entrenadores_cortos();
+        id = leer_entero("  ID del entrenador (0 = cancelar): ", 0, 999999);
+
+        if(!fin_de_entrada && id != 0){
+            indice = buscar_entrenador(id);
+
+            if(indice < 0){
+                printf("\n  " C_ROJO "No existe un entrenador con el ID %d." C_RESET "\n", id);
+            } else if(tamano_equipo[indice] > 0 && total_historial > 0){
+                printf("\n  " C_ROJO "%s ya tiene equipo y el torneo ya tiene resultados: no se puede cambiar." C_RESET "\n", entrenadores[indice].Nombre);
+            } else {
+                if(tamano_equipo[indice] > 0){
+                    confirmar = leer_entero("\n  Ese entrenador ya tiene equipo. Reemplazarlo? (1 = si, 0 = no): ", 0, 1);
+                }
+
+                if(!fin_de_entrada && confirmar == 1){
+                    leer_texto("\n  Nombre del equipo: ", nombre_equipo, sizeof(nombre_equipo));
+                    reemplazar_punto_y_coma(nombre_equipo);
+
+                    // elige uno por uno los 6 pokemon
+                    for(i = 0; i < POKEMON_POR_EQUIPO && !cancelado && !fin_de_entrada; i++){
+                        limpiar_pantalla();
+                        titulo("CREAR EQUIPO");
+                        printf("  Entrenador: " C_AMARILLO "%s" C_RESET "   Equipo: " C_CIAN "%s" C_RESET "   Elegidos: %d/%d\n\n",
+                               entrenadores[indice].Nombre, nombre_equipo, i, POKEMON_POR_EQUIPO);
+                        imprimir_catalogo_compacto();
+
+                        if(i > 0){
+                            printf("\n  Tu equipo hasta ahora: ");
+                            for(j = 0; j < i; j++){
+                                printf("%s%s", nuevo[j].Nombre, (j < i - 1) ? ", " : "\n");
+                            }
+                        }
+                        printf("\n");
+
+                        // pide el numero de pokedex hasta que sea de una especie existente y no repetida
+                        valido = 0;
+                        posicion_pokedex = -1;
+                        while(!valido && !fin_de_entrada){
+                            sprintf(mensaje, "  Numero de pokedex del pokemon %d de %d (0 = cancelar): ", i + 1, POKEMON_POR_EQUIPO);
+                            numero = leer_entero(mensaje, 0, 999);
+
+                            if(!fin_de_entrada){
+                                if(numero == 0){
+                                    cancelado = 1;
+                                    valido = 1;
+                                } else {
+                                    posicion_pokedex = buscar_en_pokedex(numero);
+                                    repetido = 0;
+                                    for(j = 0; j < i; j++){
+                                        if(elegidos[j] == posicion_pokedex){
+                                            repetido = 1;
+                                        }
+                                    }
+
+                                    if(posicion_pokedex < 0){
+                                        printf("  " C_ROJO "Ese numero no esta en la pokedex." C_RESET "\n");
+                                    } else if(repetido){
+                                        printf("  " C_ROJO "Ya elegiste ese pokemon para este equipo." C_RESET "\n");
+                                    } else {
+                                        elegidos[i] = posicion_pokedex;
+                                        valido = 1;
+                                    }
+                                }
+                            }
+                        }
+
+                        // pide el apodo del pokemon elegido y lo crea
+                        if(!cancelado && !fin_de_entrada){
+                            printf("\n  Elegiste a " C_AMARILLO "%s" C_RESET ".\n", catalogo_pokedex[posicion_pokedex].Nombre_de_pokedex);
+                            leer_texto("  Apodo para este pokemon: ", apodo, sizeof(apodo));
+                            if(!fin_de_entrada){
+                                reemplazar_punto_y_coma(apodo);
+                                crear_ejemplar(&nuevo[i], entrenadores[indice].Identificador * 10 + i + 1, posicion_pokedex, apodo);
+                            }
+                        }
+                    }
+
+                    if(cancelado){
+                        printf("\n  Creacion cancelada. No se guardo ningun cambio.\n");
+                    } else if(!fin_de_entrada){
+                        // el equipo quedo completo: se guarda en memoria y en el archivo
+                        for(i = 0; i < POKEMON_POR_EQUIPO; i++){
+                            equipos[indice][i] = nuevo[i];
+                        }
+                        tamano_equipo[indice] = POKEMON_POR_EQUIPO;
+                        strcpy(entrenadores[indice].Equipo_Pokemon, nombre_equipo);
+                        guardar_equipos_archivo();
+
+                        limpiar_pantalla();
+                        titulo("EQUIPO CREADO");
+                        printf("  " C_VERDE "Listo para el torneo!" C_RESET "\n\n");
+                        imprimir_equipo(indice);
+                    }
+                } else if(!fin_de_entrada){
+                    printf("\n  No se hizo ningun cambio.\n");
+                }
+            }
+        }
+    }
+}
+
+// opcion 5: muestra el equipo de un entrenador o un resumen con todos los equipos
+void consultar_equipos(void){
+    int opcion = -1, id, indice, i, j;
+
+    while(opcion != 0 && !fin_de_entrada){
+        limpiar_pantalla();
+        titulo("EQUIPOS");
+        borde();
+        opcion_menu(1, "Ver el equipo de un entrenador");
+        opcion_menu(2, "Ver el resumen de todos los equipos");
+        opcion_menu(0, "Volver");
+        borde();
+        opcion = leer_entero("  Elige una opcion: ", 0, 2);
+
+        if(!fin_de_entrada){
+            if(opcion == 1){
+                limpiar_pantalla();
+                titulo("VER EQUIPO");
+
+                if(total_entrenadores == 0){
+                    printf("  No hay entrenadores registrados todavia (usa la opcion 2).\n");
+                    pausa();
+                } else {
+                    listar_entrenadores_cortos();
+                    id = leer_entero("  ID del entrenador (0 = cancelar): ", 0, 999999);
+
+                    if(!fin_de_entrada && id != 0){
+                        indice = buscar_entrenador(id);
+                        limpiar_pantalla();
+                        titulo("VER EQUIPO");
+                        if(indice < 0){
+                            printf("  " C_ROJO "No existe un entrenador con el ID %d." C_RESET "\n", id);
+                        } else {
+                            imprimir_equipo(indice);
+                        }
+                        pausa();
+                    }
+                }
+            } else if(opcion == 2){
+                limpiar_pantalla();
+                titulo("RESUMEN DE EQUIPOS");
+
+                if(total_entrenadores == 0){
+                    printf("  No hay entrenadores registrados todavia (usa la opcion 2).\n");
+                } else {
+                    for(i = 0; i < total_entrenadores; i++){
+                        printf("  " C_AMARILLO "%s" C_RESET " (ID %d) - " C_CIAN "%s" C_RESET "\n", entrenadores[i].Nombre,
+                               entrenadores[i].Identificador, entrenadores[i].Equipo_Pokemon);
+                        if(tamano_equipo[i] == 0){
+                            printf("    " C_GRIS "sin pokemon" C_RESET "\n");
+                        } else {
+                            printf("    ");
+                            for(j = 0; j < tamano_equipo[i]; j++){
+                                printf("%s%s", equipos[i][j].Nombre, (j < tamano_equipo[i] - 1) ? ", " : "\n");
+                            }
+                        }
+                        printf("\n");
+                    }
+                }
+                pausa();
+            }
+        }
+    }
+}
+
+
+// ===========================================================================
+// SIMULADOR DE COMBATES CON LOS EQUIPOS (extra: usa el motor de combate 1v1 de arriba)
+// ===========================================================================
+
+// enfrenta a dos equipos completos: salen los pokemon en orden, el ganador de cada duelo sigue peleando con la vida que le quedo
+// y el perdedor es reemplazado por el siguiente. termina cuando un equipo se queda sin pokemon.
+// der_a y der_b devuelven cuantos pokemon rivales derroto cada entrenador (es lo que pide registrar_resultado)
+void simular_combate_equipos(int a, int b, int *der_a, int *der_b){
+    EjemplarPokemon ea[POKEMON_POR_EQUIPO], eb[POKEMON_POR_EQUIPO]; // copias para no gastar la vida de los equipos reales
+    int i, j = 0, ronda = 1, ganador;
+
+    for(i = 0; i < POKEMON_POR_EQUIPO; i++){
+        ea[i] = equipos[a][i];
+        eb[i] = equipos[b][i];
+    }
+
+    *der_a = 0;
+    *der_b = 0;
+    i = 0;
+
+    while(i < POKEMON_POR_EQUIPO && j < POKEMON_POR_EQUIPO){
+        printf("  Duelo %d: " C_AMARILLO "%s" C_RESET " (HP %d) vs " C_CIAN "%s" C_RESET " (HP %d)\n", ronda,
+               ea[i].Nombre, ea[i].Hp, eb[j].Nombre, eb[j].Hp);
+
+        ganador = simular_combate_1v1(&ea[i], &eb[j]);
+
+        if(ganador == 1){
+            printf("    -> gana %s y le quedan %d HP\n", ea[i].Nombre, ea[i].Hp);
+            (*der_a)++;
+            j++;
+        } else if(ganador == 2){
+            printf("    -> gana %s y le quedan %d HP\n", eb[j].Nombre, eb[j].Hp);
+            (*der_b)++;
+            i++;
+        } else {
+            printf("    -> empate (ninguno puede danar al otro): los dos se retiran\n");
+            i++;
+            j++;
+        }
+        ronda++;
+    }
+}
+
+// pide el numero de un combate del torneo, lo simula con los equipos de ambos entrenadores y registra el resultado
+void simular_combate_torneo(void){
+    int numero, a, b, der_a, der_b, error;
+
+    if(preparar_torneo()){
+        numero = leer_entero("\n  Numero de combate a simular (1-64): ", 1, COMBATES_TOTALES);
+
+        if(!fin_de_entrada){
+            if(combates[numero].jugado){
+                printf("\n  " C_ROJO "Ese combate ya tiene un resultado registrado." C_RESET "\n");
+            } else if(combates[numero].id1 == 0 || combates[numero].id2 == 0){
+                printf("\n  " C_ROJO "Los participantes de ese combate todavia no estan definidos." C_RESET "\n");
+            } else {
+                a = buscar_entrenador(combates[numero].id1);
+                b = buscar_entrenador(combates[numero].id2);
+
+                if(tamano_equipo[a] < POKEMON_POR_EQUIPO || tamano_equipo[b] < POKEMON_POR_EQUIPO){
+                    printf("\n  " C_ROJO "Ambos entrenadores necesitan un equipo de %d pokemon (opcion 3 del menu)." C_RESET "\n", POKEMON_POR_EQUIPO);
+                    if(tamano_equipo[a] < POKEMON_POR_EQUIPO){
+                        printf("  Falta el equipo de %s.\n", entrenadores[a].Nombre);
+                    }
+                    if(tamano_equipo[b] < POKEMON_POR_EQUIPO){
+                        printf("  Falta el equipo de %s.\n", entrenadores[b].Nombre);
+                    }
+                } else {
+                    limpiar_pantalla();
+                    titulo("COMBATE EN CURSO");
+                    printf("  Combate %d (%s)\n", numero, nombre_ronda(numero));
+                    printf("  " C_AMARILLO "%s" C_RESET " VS " C_CIAN "%s" C_RESET "\n\n", entrenadores[a].Nombre, entrenadores[b].Nombre);
+
+                    simular_combate_equipos(a, b, &der_a, &der_b);
+
+                    printf("\n  Pokemon derrotados: %s = %d | %s = %d\n", entrenadores[a].Nombre, der_a, entrenadores[b].Nombre, der_b);
+                    error = registrar_resultado(numero, combates[numero].id1, combates[numero].id2, der_a, der_b);
+
+                    if(error == 0){
+                        printf("\n  " C_VERDE "Resultado registrado:" C_RESET "\n");
+                        imprimir_combate(stdout, numero);
+                        anunciar_avance(numero);
+                    } else {
+                        printf("\n  " C_ROJO "No se pudo registrar:" C_RESET " %s\n", texto_error(error));
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 // ===========================================================================
@@ -1709,9 +2654,21 @@ void consultar_equipos(void){
 // (su contenido no cambio) porque en C solo puede haber un main
 
 int main(){
-    #ifdef USAR_FUNCIONES_PROVISIONALES
-    cargar_entrenadores_archivo(); // recupera los entrenadores registrados en ejecuciones anteriores
+    // semilla de numeros aleatorios (el motor de combate la usa para desempatar velocidades iguales)
+    srand(time(NULL));
+
+    #ifdef _WIN32
+    system(""); // truco para que la consola de Windows entienda los colores
     #endif
+
+    cargar_entrenadores_archivo(); // recupera los entrenadores registrados en ejecuciones anteriores
+    cargar_equipos_archivo();      // recupera sus equipos
+
+    // pantalla de inicio
+    limpiar_pantalla();
+    imprimir_logo();
+    printf("\n  Bienvenido al torneo, entrenador!\n");
+    pausa();
 
     menu_principal();
 
