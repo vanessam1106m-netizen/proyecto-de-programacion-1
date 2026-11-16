@@ -376,7 +376,9 @@ int simular_combate_1v1(EjemplarPokemon *p1, EjemplarPokemon *p2){
 // y el menu principal con control de errores. no se toco nada de lo anterior
 // (estructuras, tabla de tipos y motor de combate), solo se agrego codigo nuevo
 
-#include<string.h>
+#include <string.h>
+#include "archivos.c"
+#include "backtracking.c"
 
 // ---------------------------------------------------------------------------
 // ajustes visuales y de juego (se pueden cambiar sin tocar nada mas del programa)
@@ -484,50 +486,9 @@ const char *COLORES_TIPO[19] = {
     C_AMARILLO, C_MAGENTA, C_AZUL, C_GRIS, C_BLANCO, C_MAGENTA
 };
 
-// catalogo oficial de especies disponibles (Pokedex)
-// orden de cada dato: numero, nombre, tipo1 (texto), tipo1 (numero), tipo2 (texto), tipo2 (numero), HP, ataque, defensa, velocidad
-const Pokedex catalogo_pokedex[] = {
-    {1,   "Bulbasaur",  "Planta",    PLANTA,    "Veneno",   VENENO,    45,  49,  49,  45},
-    {3,   "Venusaur",   "Planta",    PLANTA,    "Veneno",   VENENO,    80,  82,  83,  80},
-    {4,   "Charmander", "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   39,  52,  43,  65},
-    {6,   "Charizard",  "Fuego",     FUEGO,     "Volador",  VOLADOR,   78,  84,  78, 100},
-    {7,   "Squirtle",   "Agua",      AGUA,      "Ninguno",  NINGUNO,   44,  48,  65,  43},
-    {9,   "Blastoise",  "Agua",      AGUA,      "Ninguno",  NINGUNO,   79,  83, 100,  78},
-    {25,  "Pikachu",    "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   35,  55,  40,  90},
-    {26,  "Raichu",     "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   60,  90,  55, 110},
-    {36,  "Clefable",   "Hada",      HADA,      "Ninguno",  NINGUNO,   95,  70,  73,  60},
-    {59,  "Arcanine",   "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   90, 110,  80,  95},
-    {65,  "Alakazam",   "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,   55,  50,  45, 120},
-    {68,  "Machamp",    "Lucha",     LUCHA,     "Ninguno",  NINGUNO,   90, 130,  80,  55},
-    {76,  "Golem",      "Roca",      ROCA,      "Tierra",   TIERRA,    80, 120, 130,  45},
-    {91,  "Cloyster",   "Agua",      AGUA,      "Hielo",    HIELO,     50,  95, 180,  70},
-    {94,  "Gengar",     "Fantasma",  FANTASMA,  "Veneno",   VENENO,    60,  65,  60, 110},
-    {112, "Rhydon",     "Tierra",    TIERRA,    "Roca",     ROCA,     105, 130, 120,  40},
-    {123, "Scyther",    "Bicho",     BICHO,     "Volador",  VOLADOR,   70, 110,  80, 105},
-    {127, "Pinsir",     "Bicho",     BICHO,     "Ninguno",  NINGUNO,   65, 125, 100,  85},
-    {130, "Gyarados",   "Agua",      AGUA,      "Volador",  VOLADOR,   95, 125,  79,  81},
-    {131, "Lapras",     "Agua",      AGUA,      "Hielo",    HIELO,    130,  85,  80,  60},
-    {134, "Vaporeon",   "Agua",      AGUA,      "Ninguno",  NINGUNO,  130,  65,  60,  65},
-    {135, "Jolteon",    "Electrico", ELECTRICO, "Ninguno",  NINGUNO,   65,  65,  60, 130},
-    {136, "Flareon",    "Fuego",     FUEGO,     "Ninguno",  NINGUNO,   65, 130,  60,  65},
-    {142, "Aerodactyl", "Roca",      ROCA,      "Volador",  VOLADOR,   80, 105,  65, 130},
-    {143, "Snorlax",    "Normal",    NORMAL,    "Ninguno",  NINGUNO,  160, 110,  65,  30},
-    {149, "Dragonite",  "Dragon",    DRAGON,    "Volador",  VOLADOR,   91, 134,  95,  80},
-    {150, "Mewtwo",     "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,  106, 110,  90, 130},
-    {196, "Espeon",     "Psiquico",  PSIQUICO,  "Ninguno",  NINGUNO,   65,  65,  60, 110},
-    {197, "Umbreon",    "Siniestro", SINIESTRO, "Ninguno",  NINGUNO,   95,  65, 110,  65},
-    {212, "Scizor",     "Bicho",     BICHO,     "Acero",    ACERO,     70, 130, 100,  65},
-    {248, "Tyranitar",  "Roca",      ROCA,      "Siniestro",SINIESTRO,100, 134, 110,  61},
-    {282, "Gardevoir",  "Psiquico",  PSIQUICO,  "Hada",     HADA,      68,  65,  65,  80},
-    {376, "Metagross",  "Acero",     ACERO,     "Psiquico", PSIQUICO,  80, 135, 130,  70},
-    {445, "Garchomp",   "Dragon",    DRAGON,    "Tierra",   TIERRA,   108, 130,  95, 102},
-    {448, "Lucario",    "Lucha",     LUCHA,     "Acero",    ACERO,     70, 110,  70,  90},
-    {471, "Glaceon",    "Hielo",     HIELO,     "Ninguno",  NINGUNO,   65,  60, 110,  65},
-    {700, "Sylveon",    "Hada",      HADA,      "Ninguno",  NINGUNO,   95,  65,  65,  60}
-};
-
-// cantidad de especies del catalogo (se calcula sola: tamano total / tamano de una especie)
-#define TOTAL_POKEDEX ((int)(sizeof(catalogo_pokedex) / sizeof(catalogo_pokedex[0])))
+// catalogo oficial de especies disponibles (Pokedex cargada dinamicamente desde pokedex.txt)
+Pokedex catalogo_pokedex[150];
+int TOTAL_POKEDEX = 0;
 
 const char *NOMBRES_GRUPO[MAX_GRUPOS] = {"Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", "Grupo G", "Grupo H"};
 
@@ -2262,17 +2223,17 @@ void consultar_pokedex(void){
 // EQUIPOS (opciones 3 y 5)
 // ===========================================================================
 
-// arma un ejemplar a partir de una especie del catalogo: copia sus estadisticas base y sus tipos
+// arma un ejemplar a partir de una especie del catalogo: copia sus estadisticas calculadas segun nivel y sus tipos
 void crear_ejemplar(EjemplarPokemon *e, int iu, int indice_pokedex, const char *apodo){
     e->IU = iu;
     strcpy(e->Especie, catalogo_pokedex[indice_pokedex].Nombre_de_pokedex);
     strncpy(e->Nombre, apodo, 49);
     e->Nombre[49] = '\0';
     e->Nivel = NIVEL_EQUIPO;
-    e->Hp = catalogo_pokedex[indice_pokedex].Hp_base;
-    e->Ataque = catalogo_pokedex[indice_pokedex].Ataque_base;
-    e->Defensa = catalogo_pokedex[indice_pokedex].Defensa_base;
-    e->Velocidad = catalogo_pokedex[indice_pokedex].Velocidad_base;
+    e->Hp = catalogo_pokedex[indice_pokedex].Hp_base + (NIVEL_EQUIPO * 2);
+    e->Ataque = catalogo_pokedex[indice_pokedex].Ataque_base + NIVEL_EQUIPO;
+    e->Defensa = catalogo_pokedex[indice_pokedex].Defensa_base + NIVEL_EQUIPO;
+    e->Velocidad = catalogo_pokedex[indice_pokedex].Velocidad_base + NIVEL_EQUIPO;
     e->Valor_T_Primario = catalogo_pokedex[indice_pokedex].Valor_T_Primario;
     e->Valor_T_Secundario = catalogo_pokedex[indice_pokedex].Valor_T_Secundario;
     e->Estado_actual = 1;
@@ -2406,8 +2367,55 @@ void crear_equipo(void){
                     leer_texto("\n  Nombre del equipo: ", nombre_equipo, sizeof(nombre_equipo));
                     reemplazar_punto_y_coma(nombre_equipo);
 
-                    // elige uno por uno los 6 pokemon
-                    for(i = 0; i < POKEMON_POR_EQUIPO && !cancelado && !fin_de_entrada; i++){
+                    int modo_armado = 1;
+                    printf("\n  Como deseas conformar el equipo?\n");
+                    printf("  1 = Manualmente (elegir 1 a 1 los 6 Pokemon)\n");
+                    printf("  2 = Automatico con Backtracking (cumpliendo restricciones)\n");
+                    modo_armado = leer_entero("  Opcion (1-2): ", 1, 2);
+
+                    if(modo_armado == 2){
+                        // Construccion automatica por Backtracking (punto 1.5 del reglamento)
+                        Restricciones r;
+                        r.cantidad_pokemon = POKEMON_POR_EQUIPO;
+                        printf("\n  --- REGLAS PARA EL BACKTRACKING ---\n");
+                        r.nivel_max_total = leer_entero("  Nivel maximo total (ej: 60, 0 para no limitar): ", 0, 600);
+                        r.tipos_minimos = leer_entero("  Minimo de tipos elementales distintos (ej: 3, 0 para no exigir): ", 0, 18);
+                        r.no_repetir_especie = leer_entero("  No repetir misma especie? (1 = Si, 0 = No): ", 0, 1);
+                        r.hp_min_total = 0;
+                        r.ataque_min_total = 0;
+                        r.defensa_min_total = 0;
+                        r.velocidad_min_total = 0;
+
+                        // Pool variado de candidatos a partir de la pokedex cargada
+                        EjemplarPokemon candidatos[60];
+                        int total_cand = 0;
+                        int id_base = entrenadores[indice].Identificador * 10;
+                        for(i = 0; i < 60 && i < TOTAL_POKEDEX; i++){
+                            int nv = NIVEL_EQUIPO + (i % 5);
+                            candidatos[total_cand].IU = id_base + total_cand + 1;
+                            strcpy(candidatos[total_cand].Especie, catalogo_pokedex[i].Nombre_de_pokedex);
+                            strcpy(candidatos[total_cand].Nombre, catalogo_pokedex[i].Nombre_de_pokedex);
+                            candidatos[total_cand].Nivel = nv;
+                            candidatos[total_cand].Hp = catalogo_pokedex[i].Hp_base + (nv * 2);
+                            candidatos[total_cand].Ataque = catalogo_pokedex[i].Ataque_base + nv;
+                            candidatos[total_cand].Defensa = catalogo_pokedex[i].Defensa_base + nv;
+                            candidatos[total_cand].Velocidad = catalogo_pokedex[i].Velocidad_base + nv;
+                            candidatos[total_cand].Valor_T_Primario = catalogo_pokedex[i].Valor_T_Primario;
+                            candidatos[total_cand].Valor_T_Secundario = catalogo_pokedex[i].Valor_T_Secundario;
+                            candidatos[total_cand].Estado_actual = 1;
+                            total_cand++;
+                        }
+
+                        printf("\n  Buscando combinacion valida con algoritmo de Backtracking...\n");
+                        if(buscar_equipo_bt(candidatos, total_cand, 0, nuevo, 0, r)){
+                            printf("  " C_VERDE "Combinacion encontrada exitosamente con Backtracking!" C_RESET "\n");
+                        } else {
+                            printf("  " C_ROJO "No fue posible encontrar una combinacion que cumpla todas las restricciones." C_RESET "\n");
+                            cancelado = 1;
+                        }
+                    } else {
+                        // elige uno por uno los 6 pokemon de forma manual
+                        for(i = 0; i < POKEMON_POR_EQUIPO && !cancelado && !fin_de_entrada; i++){
                         limpiar_pantalla();
                         titulo("CREAR EQUIPO");
                         printf("  Entrenador: " C_AMARILLO "%s" C_RESET "   Equipo: " C_CIAN "%s" C_RESET "   Elegidos: %d/%d\n\n",
@@ -2463,6 +2471,7 @@ void crear_equipo(void){
                                 crear_ejemplar(&nuevo[i], entrenadores[indice].Identificador * 10 + i + 1, posicion_pokedex, apodo);
                             }
                         }
+                    }
                     }
 
                     if(cancelado){
@@ -2661,13 +2670,18 @@ int main(){
     system(""); // truco para que la consola de Windows entienda los colores
     #endif
 
+    // cargar catalogo de pokedex desde archivo pokedex.txt
+    if(!cargar_pokedex("pokedex.txt", catalogo_pokedex, &TOTAL_POKEDEX)){
+        printf("Aviso: No se pudo cargar 'pokedex.txt'.\n");
+    }
+
     cargar_entrenadores_archivo(); // recupera los entrenadores registrados en ejecuciones anteriores
     cargar_equipos_archivo();      // recupera sus equipos
 
     // pantalla de inicio
     limpiar_pantalla();
     imprimir_logo();
-    printf("\n  Bienvenido al torneo, entrenador!\n");
+    printf("\n  Bienvenido al torneo, entrenador! (Pokédex cargada: %d especies)\n", TOTAL_POKEDEX);
     pausa();
 
     menu_principal();

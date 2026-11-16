@@ -1,3 +1,6 @@
+#ifndef BACKTRACKING_C
+#define BACKTRACKING_C
+
 // estructura con los filtros que pide el usuario
 typedef struct {
     int cantidad_pokemon;
@@ -135,3 +138,5 @@ int buscar_equipo_bt(EjemplarPokemon candidatos[], int total_candidatos, int ini
 
     return 0; // no hubo combinacion valida por aqui
 }
+
+#endif // BACKTRACKING_C

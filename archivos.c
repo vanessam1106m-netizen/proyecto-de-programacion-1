@@ -1,15 +1,18 @@
+#ifndef ARCHIVOS_C
+#define ARCHIVOS_C
+
 #include <stdio.h>
 #include <string.h>
 
 // arreglo con los nombres de tipos en el mismo orden del enum IdTipo (0 = Ninguno, 1 = Normal, etc)
-char nombres_tipos[19][20] = {
+static char nombres_tipos[19][20] = {
     "Ninguno", "Normal", "Fuego", "Agua", "Planta", "Electrico", "Hielo",
     "Lucha", "Veneno", "Tierra", "Volador", "Psiquico", "Bicho",
     "Roca", "Fantasma", "Dragon", "Siniestro", "Acero", "Hada"
 };
 
 // funcion para saber el numero de tipo a partir de la palabra leida del archivo
-int tipo_a_numero(char tipo[]) {
+static int tipo_a_numero(char tipo[]) {
     int i;
     for (i = 1; i <= 18; i++) {
         if (strcmp(tipo, nombres_tipos[i]) == 0) {
@@ -63,7 +66,7 @@ int cargar_pokedex(char ruta[], Pokedex catalogo[], int *total) {
 }
 
 // crea un ejemplar nuevo con sus estadisticas calculadas segun el nivel
-void crear_ejemplar(Pokedex base, int nivel, EjemplarPokemon *poke, int *secuencia_iu) {
+void instanciar_ejemplar(Pokedex base, int nivel, EjemplarPokemon *poke, int *secuencia_iu) {
     poke->IU = *secuencia_iu;
     (*secuencia_iu)++;
 
@@ -189,3 +192,5 @@ int cargar_entrenadores(char ruta[], Entrenador lista[], EjemplarPokemon equipos
     *total = cont;
     return 1;
 }
+
+#endif // ARCHIVOS_C

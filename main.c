@@ -205,7 +205,7 @@ void opcion_crear_equipo() {
             }
 
             if (encontrado != -1 && nivel >= 1 && nivel <= 100) {
-                crear_ejemplar(pokedex[encontrado], nivel, &equipos_entrenadores[pos][cant_pokemon_entrenador[pos]], &secuencia_iu);
+                instanciar_ejemplar(pokedex[encontrado], nivel, &equipos_entrenadores[pos][cant_pokemon_entrenador[pos]], &secuencia_iu);
                 cant_pokemon_entrenador[pos]++;
                 printf("  -> %s agregado!\n", pokedex[encontrado].Nombre_de_pokedex);
             } else {
@@ -239,7 +239,7 @@ void opcion_crear_equipo() {
         int total_cand = 0;
         for (i = 0; i < 60 && i < total_pokedex; i++) {
             int nivel = 10 + (i % 15);
-            crear_ejemplar(pokedex[i], nivel, &candidatos[total_cand], &secuencia_iu);
+            instanciar_ejemplar(pokedex[i], nivel, &candidatos[total_cand], &secuencia_iu);
             total_cand++;
         }
 
