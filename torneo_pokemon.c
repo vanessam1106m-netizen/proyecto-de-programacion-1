@@ -639,6 +639,7 @@ void cargar_equipos_archivo(void);
 // simulador de combates con los equipos (usa el motor de combate 1v1)
 void simular_combate_equipos(int a, int b, int *der_a, int *der_b);
 void simular_combate_torneo(void);
+void simular_torneo_corto(void);
 
 
 // ===========================================================================
@@ -1546,14 +1547,15 @@ void menu_cargar_resultados(void){
 
     while(opcion != 0 && !fin_de_entrada){
         limpiar_pantalla();
-        titulo("CARGAR RESULTADOS");
+        titulo("MODALIDADES DE TORNEO Y RESULTADOS");
         borde();
-        opcion_menu(1, "Por teclado");
+        opcion_menu(1, "Por teclado (Torneo Oficial)");
         opcion_menu(2, "Desde un archivo de texto");
-        opcion_menu(3, "Simular un combate con los equipos (automatico)");
-        opcion_menu(0, "Volver");
+        opcion_menu(3, "Torneo Largo Oficial: Simular combate individual");
+        opcion_menu(4, "Torneo Corto (Copa Relampago: 4 u 8 Entrenadores)");
+        opcion_menu(0, "Volver al menu principal");
         borde();
-        opcion = leer_entero("  Elige una opcion: ", 0, 3);
+        opcion = leer_entero("  Elige una opcion (0-4): ", 0, 4);
 
         if(!fin_de_entrada){
             if(opcion == 1){
@@ -1570,8 +1572,12 @@ void menu_cargar_resultados(void){
                 }
             } else if(opcion == 3){
                 limpiar_pantalla();
-                titulo("SIMULADOR DE COMBATE");
+                titulo("TORNEO LARGO: SIMULADOR DE COMBATE");
                 simular_combate_torneo();
+                pausa();
+            } else if(opcion == 4){
+                limpiar_pantalla();
+                simular_torneo_corto();
                 pausa();
             }
         }
@@ -1840,6 +1846,19 @@ static void dormir_ms(int ms){
     #endif
 }
 
+// animacion de texto estilo maquina de escribir
+void imprimir_animado(const char *txt, int ms_por_letra){
+    int i = 0;
+    while(txt[i] != '\0'){
+        putchar(txt[i]);
+        fflush(stdout);
+        if(ms_por_letra > 0){
+            dormir_ms(ms_por_letra);
+        }
+        i++;
+    }
+}
+
 // dibuja el logo oficial centrado con arte de Pokebola y tipografia estilizada
 void imprimir_logo(void){
     printf("\n");
@@ -1847,7 +1866,7 @@ void imprimir_logo(void){
     printf("         " C_B_ROJO   "   /      .------------.      \\" C_RESET "    " C_B_AMARILLO "* * * P O K E M O N * * *" C_RESET "\n");
     printf("         " C_B_ROJO   "  /     /                \\     \\" C_RESET "       " C_B_BLANCO "G R A N   T O R N E O" C_RESET "\n");
     printf("         " C_B_BLANCO " |=====|      ( O )       |=====|" C_RESET "    " C_B_CIAN   "   Liga Oficial de Kanto" C_RESET "\n");
-    printf("         " C_B_BLANCO "  \\     \\                /     /" C_RESET "       " C_GRIS     "UC - Computacion 2026" C_RESET "\n");
+    printf("         " C_B_BLANCO "  \\     \\                /     /" C_RESET "       " C_B_VERDE  "[  MODO CAMPEONATO  ]" C_RESET "\n");
     printf("         " C_B_BLANCO "   \\      '------------'      /" C_RESET "\n");
     printf("         " C_B_BLANCO "     '-----------------------'" C_RESET "\n");
 }
@@ -2640,27 +2659,144 @@ void simular_combate_equipos(int a, int b, int *der_a, int *der_b){
     *der_b = 0;
     i = 0;
 
+    printf("\n  " C_B_BLANCO "==========================================================" C_RESET "\n");
+    printf("  " C_B_AMARILLO "  DUELO DE EQUIPOS: %s  VS  %s" C_RESET "\n", entrenadores[a].Nombre, entrenadores[b].Nombre);
+    printf("  " C_B_BLANCO "==========================================================" C_RESET "\n\n");
+    dormir_ms(250);
+
     while(i < POKEMON_POR_EQUIPO && j < POKEMON_POR_EQUIPO){
-        printf("  Duelo %d: " C_AMARILLO "%s" C_RESET " (HP %d) vs " C_CIAN "%s" C_RESET " (HP %d)\n", ronda,
-               ea[i].Nombre, ea[i].Hp, eb[j].Nombre, eb[j].Hp);
+        printf("  " C_B_CIAN ">> RONDA %d:" C_RESET " " C_AMARILLO "%s" C_RESET " [%s] (HP %d)  VS  " C_CIAN "%s" C_RESET " [%s] (HP %d)\n",
+               ronda, entrenadores[a].Nombre, ea[i].Nombre, ea[i].Hp,
+               entrenadores[b].Nombre, eb[j].Nombre, eb[j].Hp);
+
+        printf("     " C_AMARILLO "%-10.10s" C_RESET " ", ea[i].Nombre);
+        imprimir_barra(ea[i].Hp, MAX_STAT, 14);
+        printf("  VS  ");
+        imprimir_barra(eb[j].Hp, MAX_STAT, 14);
+        printf(" " C_CIAN "%-10.10s" C_RESET "\n", eb[j].Nombre);
+
+        // animacion de choque de batalla
+        printf("     " C_GRIS "[");
+        for(int k = 0; k < 6; k++){
+            printf(" *");
+            fflush(stdout);
+            dormir_ms(40);
+        }
+        printf(" IMPACTO! ]" C_RESET "\n");
 
         ganador = simular_combate_1v1(&ea[i], &eb[j]);
 
         if(ganador == 1){
-            printf("    -> gana %s y le quedan %d HP\n", ea[i].Nombre, ea[i].Hp);
+            printf("     " C_B_VERDE ">> Victoria para %s (%s)! Le restan %d HP." C_RESET "\n",
+                   entrenadores[a].Nombre, ea[i].Nombre, ea[i].Hp);
             (*der_a)++;
             j++;
         } else if(ganador == 2){
-            printf("    -> gana %s y le quedan %d HP\n", eb[j].Nombre, eb[j].Hp);
+            printf("     " C_B_VERDE ">> Victoria para %s (%s)! Le restan %d HP." C_RESET "\n",
+                   entrenadores[b].Nombre, eb[j].Nombre, eb[j].Hp);
             (*der_b)++;
             i++;
         } else {
-            printf("    -> empate (ninguno puede danar al otro): los dos se retiran\n");
+            printf("     " C_AMARILLO ">> Doble K.O. / Empate: Ambos pokemon se retiran." C_RESET "\n");
             i++;
             j++;
         }
+        printf("\n");
+        dormir_ms(150);
         ronda++;
     }
+}
+
+// Copa Relampago: Torneo Corto directo (4 u 8 entrenadores) con animaciones de torneo completas
+void simular_torneo_corto(void){
+    int disponibles[MAX_ENTRENADORES], total_disp = 0;
+    int participantes = 4, opcion_p, i, j;
+    int ronda_actual[8], siguiente_ronda[4];
+    int der_a, der_b, num_comb = 1;
+
+    titulo("COPA RELAMPAGO - TORNEO CORTO");
+
+    for(i = 0; i < total_entrenadores; i++){
+        if(tamano_equipo[i] == POKEMON_POR_EQUIPO){
+            disponibles[total_disp++] = i;
+        }
+    }
+
+    if(total_disp < 4){
+        printf("\n  " C_ROJO "Se necesitan al menos 4 entrenadores con equipo completo de 6 pokemon." C_RESET "\n");
+        printf("  Actualmente hay solo %d entrenadores con equipo listo.\n", total_disp);
+        printf("  Ve a la opcion 3 del menu para crear equipos con backtracking o manual.\n");
+        return;
+    }
+
+    printf("  Selecciona la escala del torneo corto:\n");
+    printf("    1. Cuadrangular Relampago (4 Entrenadores: Semifinales y Final)\n");
+    if(total_disp >= 8){
+        printf("    2. Octagonal Relampago (8 Entrenadores: Cuartos, Semifinal y Final)\n");
+    }
+    printf("    0. Cancelar\n");
+
+    opcion_p = leer_entero("  Opcion: ", 0, (total_disp >= 8) ? 2 : 1);
+    if(opcion_p == 0 || fin_de_entrada) return;
+
+    participantes = (opcion_p == 2) ? 8 : 4;
+
+    printf("\n  " C_B_AMARILLO ">> ENTRENADORES CLASIFICADOS A LA COPA RELAMPAGO <<" C_RESET "\n");
+    for(i = 0; i < participantes; i++){
+        ronda_actual[i] = disponibles[i];
+        printf("   [%d] %-20.20s (ID %d) - Equipo: %s\n",
+               i + 1, entrenadores[disponibles[i]].Nombre, entrenadores[disponibles[i]].Identificador,
+               entrenadores[disponibles[i]].Equipo_Pokemon);
+    }
+
+    printf("\n  " C_B_VERDE "Iniciando brackets del Torneo Corto..." C_RESET "\n");
+    dormir_ms(500);
+
+    // Cuartos de final si son 8
+    int restantes = participantes;
+    while(restantes > 1){
+        const char *etiqueta = (restantes == 8) ? "CUARTOS DE FINAL" : (restantes == 4) ? "SEMIFINALES" : "GRAN FINAL";
+        printf("\n  " C_B_MAGENTA "==================================================" C_RESET "\n");
+        printf("  " C_B_AMARILLO "   FASE: %s" C_RESET "\n", etiqueta);
+        printf("  " C_B_MAGENTA "==================================================" C_RESET "\n");
+        dormir_ms(400);
+
+        int sig_count = 0;
+        for(i = 0; i < restantes; i += 2){
+            int e1 = ronda_actual[i];
+            int e2 = ronda_actual[i + 1];
+
+            printf("\n  " C_B_CIAN "[Combate %d]" C_RESET " %s  VS  %s\n",
+                   num_comb++, entrenadores[e1].Nombre, entrenadores[e2].Nombre);
+
+            simular_combate_equipos(e1, e2, &der_a, &der_b);
+
+            int ganador_comb = (der_a >= der_b) ? e1 : e2;
+            siguiente_ronda[sig_count++] = ganador_comb;
+
+            printf("  " C_B_VERDE ">> Clasifica a la siguiente ronda: %s! <<" C_RESET "\n",
+                   entrenadores[ganador_comb].Nombre);
+            dormir_ms(300);
+        }
+
+        restantes = sig_count;
+        for(j = 0; j < restantes; j++){
+            ronda_actual[j] = siguiente_ronda[j];
+        }
+    }
+
+    // Gran campeon del torneo corto
+    int campeon_corto = ronda_actual[0];
+    printf("\n\n");
+    imprimir_trofeo();
+    printf("     " C_B_AMARILLO "+==============================================================+" C_RESET "\n");
+    printf("     " C_B_AMARILLO "|      ¡CAMPEON DE LA COPA RELAMPAGO (TORNEO CORTO)!           |" C_RESET "\n");
+    printf("     " C_B_AMARILLO "|                                                              |" C_RESET "\n");
+    printf("     " C_B_AMARILLO "|  Entrenador: %-25.25s ID: %-5d       |" C_RESET "\n",
+           entrenadores[campeon_corto].Nombre, entrenadores[campeon_corto].Identificador);
+    printf("     " C_B_AMARILLO "|  Equipo:     %-30.30s          |" C_RESET "\n",
+           entrenadores[campeon_corto].Equipo_Pokemon);
+    printf("     " C_B_AMARILLO "+==============================================================+" C_RESET "\n\n");
 }
 
 // pide el numero de un combate del torneo, lo simula con los equipos de ambos entrenadores y registra el resultado
