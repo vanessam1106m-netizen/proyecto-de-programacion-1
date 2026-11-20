@@ -2,6 +2,11 @@
 #include<stdlib.h>
 #include<time.h>
 #include<math.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 
 // asigna un numero entero fijo a cada tipo elemental (del 1 al 18) y 0 cuando un pokemon no tiene segundo tipo
@@ -393,25 +398,39 @@ int simular_combate_1v1(EjemplarPokemon *p1, EjemplarPokemon *p2){
 #define NIVEL_EQUIPO 2   // nivel con el que nacen los pokemon de los equipos
 
 #if USAR_COLORES
-    #define C_RESET    "\033[0m"
-    #define C_ROJO     "\033[31m"
-    #define C_VERDE    "\033[32m"
-    #define C_AMARILLO "\033[33m"
-    #define C_AZUL     "\033[34m"
-    #define C_MAGENTA  "\033[35m"
-    #define C_CIAN     "\033[36m"
-    #define C_BLANCO   "\033[37m"
-    #define C_GRIS     "\033[90m"
+    #define C_RESET       "\033[0m"
+    #define C_ROJO        "\033[31m"
+    #define C_VERDE       "\033[32m"
+    #define C_AMARILLO    "\033[33m"
+    #define C_AZUL        "\033[34m"
+    #define C_MAGENTA     "\033[35m"
+    #define C_CIAN        "\033[36m"
+    #define C_BLANCO      "\033[37m"
+    #define C_GRIS        "\033[90m"
+    #define C_B_ROJO      "\033[1;31m"
+    #define C_B_VERDE     "\033[1;32m"
+    #define C_B_AMARILLO  "\033[1;33m"
+    #define C_B_AZUL      "\033[1;34m"
+    #define C_B_MAGENTA   "\033[1;35m"
+    #define C_B_CIAN      "\033[1;36m"
+    #define C_B_BLANCO    "\033[1;37m"
 #else
-    #define C_RESET    ""
-    #define C_ROJO     ""
-    #define C_VERDE    ""
-    #define C_AMARILLO ""
-    #define C_AZUL     ""
-    #define C_MAGENTA  ""
-    #define C_CIAN     ""
-    #define C_BLANCO   ""
-    #define C_GRIS     ""
+    #define C_RESET       ""
+    #define C_ROJO        ""
+    #define C_VERDE       ""
+    #define C_AMARILLO    ""
+    #define C_AZUL        ""
+    #define C_MAGENTA     ""
+    #define C_CIAN        ""
+    #define C_BLANCO      ""
+    #define C_GRIS        ""
+    #define C_B_ROJO      ""
+    #define C_B_VERDE     ""
+    #define C_B_AMARILLO  ""
+    #define C_B_AZUL      ""
+    #define C_B_MAGENTA   ""
+    #define C_B_CIAN      ""
+    #define C_B_BLANCO    ""
 #endif
 
 // ---------------------------------------------------------------------------
@@ -595,6 +614,7 @@ void fila_seccion(const char *texto);
 void opcion_menu(int numero, const char *texto);
 void titulo(const char *texto);
 void imprimir_logo(void);
+void animacion_intro(void);
 void imprimir_trofeo(void);
 void imprimir_barra(int valor, int maximo, int ancho);
 void imprimir_tipo(int id);
@@ -1410,23 +1430,28 @@ void imprimir_clasificacion(FILE *s){
     fprintf(s, "Desempate: 1) mas puntos  2) mas victorias  3) mas pokemon rivales derrotados\n");
 }
 
-// imprime el podio oficial (campeon, subcampeon, tercer y cuarto lugar) o cuanto falta para tenerlo
+// imprime el podio oficial con estetica de premiacion, trofeos y medallas
 void imprimir_podio(FILE *s){
     int n, jugados = 0;
 
     if(torneo_terminado()){
-        fprintf(s, "\n===== PODIO OFICIAL =====\n");
-        fprintf(s, "Campeon:      %s\n", nombre_de(combates[64].ganador));
-        fprintf(s, "Subcampeon:   %s\n", nombre_de(combates[64].perdedor));
-        fprintf(s, "Tercer lugar: %s\n", nombre_de(combates[63].ganador));
-        fprintf(s, "Cuarto lugar: %s\n", nombre_de(combates[63].perdedor));
+        fprintf(s, "\n");
+        fprintf(s, "  " C_B_AMARILLO "+==============================================================+" C_RESET "\n");
+        fprintf(s, "  " C_B_AMARILLO "|                  *** PODIO OFICIAL DEL TORNEO ***            |" C_RESET "\n");
+        fprintf(s, "  " C_B_AMARILLO "+==============================================================+" C_RESET "\n");
+        fprintf(s, "  " C_B_AMARILLO "|  [1er LUGAR] ORO    | CAMPEON:     %-25.25s |" C_RESET "\n", nombre_de(combates[64].ganador));
+        fprintf(s, "  " C_B_BLANCO   "|  [2do LUGAR] PLATA  | SUBCAMPEON:  %-25.25s |" C_RESET "\n", nombre_de(combates[64].perdedor));
+        fprintf(s, "  " C_AMARILLO   "|  [3er LUGAR] BRONCE | TERCER PUESTO: %-23.23s |" C_RESET "\n", nombre_de(combates[63].ganador));
+        fprintf(s, "  " C_GRIS       "|  [4to LUGAR] CUARTO | CUARTO LUGAR:  %-23.23s |" C_RESET "\n", nombre_de(combates[63].perdedor));
+        fprintf(s, "  " C_B_AMARILLO "+==============================================================+" C_RESET "\n");
     } else {
         for(n = 49; n <= COMBATES_TOTALES; n++){
             if(combates[n].jugado){
                 jugados++;
             }
         }
-        fprintf(s, "\nEl torneo aun no termina (combates eliminatorios jugados: %d/%d).\n", jugados, COMBATES_TOTALES - COMBATES_GRUPOS);
+        fprintf(s, "\n  " C_B_CIAN "[TORNEO EN CURSO]" C_RESET " Combates eliminatorios jugados: " C_B_AMARILLO "%d/%d" C_RESET "\n",
+                jugados, COMBATES_TOTALES - COMBATES_GRUPOS);
     }
 }
 
@@ -1765,76 +1790,107 @@ void linea_de(char c, int cantidad){
     }
 }
 
-// linea horizontal de un marco
+// linea horizontal de un marco con estilo de bordes dobles
 void borde(void){
-    printf("  " C_CIAN "+");
-    linea_de('-', ANCHO);
-    printf("+" C_RESET "\n");
+    printf("     " C_B_CIAN "+==============================================================+" C_RESET "\n");
 }
 
-// fila de un marco con un texto normal
+// fila de un marco con un texto centrado o tabulado
 void fila(const char *texto){
-    printf("  " C_CIAN "|" C_RESET " %-58.58s " C_CIAN "|" C_RESET "\n", texto);
+    printf("     " C_B_CIAN "| " C_B_AMARILLO "%-60.60s" C_B_CIAN " |" C_RESET "\n", texto);
 }
 
-// fila de un marco con el nombre de una seccion (en otro color)
+// fila de un marco con el nombre de una seccion destacada
 void fila_seccion(const char *texto){
-    printf("  " C_CIAN "|" C_RESET " " C_MAGENTA "%-58.58s" C_RESET " " C_CIAN "|" C_RESET "\n", texto);
+    printf("     " C_B_CIAN "|  " C_B_MAGENTA ">> %-56.56s" C_B_CIAN " |" C_RESET "\n", texto);
 }
 
 // fila de un marco con una opcion numerada del menu
 void opcion_menu(int numero, const char *texto){
-    printf("  " C_CIAN "|" C_RESET "  " C_AMARILLO "[%2d]" C_RESET " %-52.52s " C_CIAN "|" C_RESET "\n", numero, texto);
+    printf("     " C_B_CIAN "|  " C_B_AMARILLO "[%2d]" C_RESET "  %-52.52s " C_B_CIAN "|" C_RESET "\n", numero, texto);
 }
 
 // cabecera de cada pantalla: un marco con el titulo centrado
 void titulo(const char *texto){
     int largo = (int)strlen(texto);
-    int izquierda = (ANCHO - largo) / 2;
-    int derecha = ANCHO - largo - izquierda;
+    int total_interior = 60;
+    int izquierda = (total_interior - largo) / 2;
+    int derecha = total_interior - largo - izquierda;
 
     if(izquierda < 0){
         izquierda = 0;
         derecha = 0;
     }
 
-    printf("\n  " C_CIAN "+");
-    linea_de('=', ANCHO);
-    printf("+" C_RESET "\n");
-
-    printf("  " C_CIAN "|" C_RESET);
+    printf("\n     " C_B_CIAN "+==============================================================+" C_RESET "\n");
+    printf("     " C_B_CIAN "| " C_RESET);
     linea_de(' ', izquierda);
-    printf(C_AMARILLO "%s" C_RESET, texto);
+    printf(C_B_AMARILLO "%s" C_RESET, texto);
     linea_de(' ', derecha);
-    printf(C_CIAN "|" C_RESET "\n");
-
-    printf("  " C_CIAN "+");
-    linea_de('=', ANCHO);
-    printf("+" C_RESET "\n\n");
+    printf(" " C_B_CIAN "|" C_RESET "\n");
+    printf("     " C_B_CIAN "+==============================================================+" C_RESET "\n\n");
 }
 
-// dibuja una pokebola con el nombre del torneo
+// retardo en milisegundos para animaciones
+static void dormir_ms(int ms){
+    #ifdef _WIN32
+    Sleep(ms);
+    #else
+    usleep(ms * 1000);
+    #endif
+}
+
+// dibuja el logo oficial centrado con arte de Pokebola y tipografia estilizada
 void imprimir_logo(void){
     printf("\n");
-    printf(C_ROJO "         .-------." C_RESET "\n");
-    printf(C_ROJO "       /   .---.   \\" C_RESET "     " C_AMARILLO "P O K E M O N" C_RESET "\n");
-    printf(C_BLANCO "      |---(  O  )---|" C_RESET "    " C_CIAN "T O R N E O   O F I C I A L" C_RESET "\n");
-    printf(C_BLANCO "       \\   '---'   /" C_RESET "     " C_GRIS "grupos, eliminatorias y gloria" C_RESET "\n");
-    printf(C_BLANCO "         '-------'" C_RESET "\n");
+    printf("         " C_B_ROJO   "     .-----------------------." C_RESET "\n");
+    printf("         " C_B_ROJO   "   /      .------------.      \\" C_RESET "    " C_B_AMARILLO "* * * P O K E M O N * * *" C_RESET "\n");
+    printf("         " C_B_ROJO   "  /     /                \\     \\" C_RESET "       " C_B_BLANCO "G R A N   T O R N E O" C_RESET "\n");
+    printf("         " C_B_BLANCO " |=====|      ( O )       |=====|" C_RESET "    " C_B_CIAN   "   Liga Oficial de Kanto" C_RESET "\n");
+    printf("         " C_B_BLANCO "  \\     \\                /     /" C_RESET "       " C_GRIS     "UC - Computacion 2026" C_RESET "\n");
+    printf("         " C_B_BLANCO "   \\      '------------'      /" C_RESET "\n");
+    printf("         " C_B_BLANCO "     '-----------------------'" C_RESET "\n");
 }
 
-// dibuja un trofeo (se muestra cuando ya hay campeon)
+// animacion especial de introduccion
+void animacion_intro(void){
+    limpiar_pantalla();
+    printf("\n\n");
+    printf("              " C_B_ROJO   "[  C A R G A N D O   P O K E D E X  ]" C_RESET "\n\n");
+    printf("         [");
+    for(int i = 0; i <= 25; i++){
+        printf(C_B_VERDE "#" C_RESET);
+        fflush(stdout);
+        dormir_ms(25);
+    }
+    printf("] " C_B_AMARILLO "100%%" C_RESET "\n\n");
+    dormir_ms(200);
+
+    limpiar_pantalla();
+    imprimir_logo();
+    printf("\n   " C_B_VERDE ">> SISTEMA DEL TORNEO INICIADO CORRECTAMENTE <<" C_RESET "\n");
+    dormir_ms(400);
+}
+
+// dibuja el gran trofeo dorado con medallas y fuegos artificiales
 void imprimir_trofeo(void){
-    printf(C_AMARILLO "\n");
-    printf("           ___________\n");
-    printf("          |  _______  |\n");
-    printf("       .--| |   *   | |--.\n");
-    printf("       '--| |_______| |--'\n");
-    printf("          \\___________/\n");
-    printf("              |   |\n");
-    printf("            __|___|__\n");
-    printf("           |_________|\n");
-    printf(C_RESET "\n");
+    printf("\n");
+    printf("               " C_B_AMARILLO "          .-----------------." C_RESET "\n");
+    printf("               " C_B_AMARILLO "       .-'  *  *  *  *  *  '-." C_RESET "\n");
+    printf("               " C_B_AMARILLO "      /                       \\" C_RESET "\n");
+    printf("               " C_B_AMARILLO "     |   .-----------------.   |" C_RESET "\n");
+    printf("               " C_B_AMARILLO "  .__|  |  CAMPEON DE LA   |  |__.__" C_RESET "\n");
+    printf("               " C_B_AMARILLO "  |  |  |   LIGA POKEMON   |  |  |  |" C_RESET "\n");
+    printf("               " C_B_AMARILLO "  '--|  |                  |  |--'" C_RESET "\n");
+    printf("               " C_B_AMARILLO "      \\  '-----------------'  /" C_RESET "\n");
+    printf("               " C_B_AMARILLO "       '--.               .--'" C_RESET "\n");
+    printf("               " C_B_AMARILLO "           \\             /" C_RESET "\n");
+    printf("               " C_B_AMARILLO "            `'--.   .--'`" C_RESET "\n");
+    printf("               " C_B_AMARILLO "                 | |" C_RESET "\n");
+    printf("               " C_B_AMARILLO "                _| |_ " C_RESET "\n");
+    printf("               " C_B_AMARILLO "             .-'     '-." C_RESET "\n");
+    printf("               " C_B_AMARILLO "            |___________|" C_RESET "\n");
+    printf("\n");
 }
 
 // dibuja una barra de estadistica, por ejemplo [#######-------]. el color cambia segun lo llena que este
@@ -2678,10 +2734,9 @@ int main(){
     cargar_entrenadores_archivo(); // recupera los entrenadores registrados en ejecuciones anteriores
     cargar_equipos_archivo();      // recupera sus equipos
 
-    // pantalla de inicio
-    limpiar_pantalla();
-    imprimir_logo();
-    printf("\n  Bienvenido al torneo, entrenador! (Pokédex cargada: %d especies)\n", TOTAL_POKEDEX);
+    // pantalla de inicio con animacion oficial
+    animacion_intro();
+    printf("\n     " C_B_VERDE ">> POKEDEX CARGADA: %d ESPECIES OFICIALES <<" C_RESET "\n", TOTAL_POKEDEX);
     pausa();
 
     menu_principal();
