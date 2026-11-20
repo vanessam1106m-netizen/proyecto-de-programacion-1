@@ -1,4 +1,4 @@
-#include<stdio.h>
+﻿#include<stdio.h>
 #include<stdlib.h>
 #include<time.h>
 #include<math.h>
@@ -148,15 +148,15 @@ int prueba_combate_1v1 (){
     
     // si retorno 1, gano el ejemplar 1 y muestra con cuanta vida quedo
     if (ganador == 1) {
-        printf("¡El Ganador es el Ejemplar 1 (%s)! HP final: %d\n", p1.Nombre, p1.Hp);
+        printf("Â¡El Ganador es el Ejemplar 1 (%s)! HP final: %d\n", p1.Nombre, p1.Hp);
         
     // si retorno 2, gano el ejemplar 2 y muestra con cuanta vida quedo
     } else if (ganador == 2) {
-        printf("¡El Ganador es el Ejemplar 2 (%s)! HP final: %d\n", p2.Nombre, p2.Hp);
+        printf("Â¡El Ganador es el Ejemplar 2 (%s)! HP final: %d\n", p2.Nombre, p2.Hp);
         
     // si retorno 0, significa que ninguno pudo ganar (empate por vida en 0 o inmunidad mutua)
     } else {
-        printf("¡El duelo termino en empate!\n");
+        printf("Â¡El duelo termino en empate!\n");
     }
 
     // indica al sistema operativo que el programa finalizo correctamente
@@ -1536,7 +1536,11 @@ void mostrar_menu(void){
     opcion_menu(10, "Resultados globales");
     opcion_menu(11, "Mostrar campeon");
     fila("");
-    opcion_menu(12, "Salir");
+    fila_seccion("MODALIDADES");
+    opcion_menu(12, "Torneo Largo (oficial: 32 entrenadores, 64 combates)");
+    opcion_menu(13, "Torneo Corto (Copa Relampago: 4 u 8 entrenadores)");
+    fila("");
+    opcion_menu(14, "Salir");
     borde();
 }
 
@@ -1723,10 +1727,10 @@ void mostrar_campeon(void){
 void menu_principal(void){
     int opcion = 0;
 
-    while(opcion != 12 && !fin_de_entrada){
+    while(opcion != 14 && !fin_de_entrada){
         limpiar_pantalla();
         mostrar_menu();
-        opcion = leer_entero("  Elige una opcion (1-12): ", 1, 12);
+        opcion = leer_entero("        Elige una opcion (1-14): ", 1, 14);
 
         if(!fin_de_entrada){
             limpiar_pantalla();
@@ -1744,7 +1748,9 @@ void menu_principal(void){
                 case 9:  consultar_historial();          pausa();      break;
                 case 10: mostrar_resultados_globales();  pausa();      break;
                 case 11: mostrar_campeon();              pausa();      break;
-                case 12:
+                case 12: limpiar_pantalla(); titulo("TORNEO LARGO OFICIAL"); simular_combate_torneo(); pausa(); break;
+                case 13: limpiar_pantalla(); simular_torneo_corto(); pausa(); break;
+                case 14:
                     printf("\n");
                     imprimir_logo();
                     printf("\n  Gracias por jugar. Hasta la proxima, entrenador!\n\n");
@@ -1798,22 +1804,22 @@ void linea_de(char c, int cantidad){
 
 // linea horizontal de un marco con estilo de bordes dobles
 void borde(void){
-    printf("     " C_B_CIAN "+==============================================================+" C_RESET "\n");
+    printf("        " C_B_CIAN "+==============================================================+" C_RESET "\n");
 }
 
 // fila de un marco con un texto centrado o tabulado
 void fila(const char *texto){
-    printf("     " C_B_CIAN "| " C_B_AMARILLO "%-60.60s" C_B_CIAN " |" C_RESET "\n", texto);
+    printf("        " C_B_CIAN "| " C_B_AMARILLO "%-60.60s" C_B_CIAN " |" C_RESET "\n", texto);
 }
 
 // fila de un marco con el nombre de una seccion destacada
 void fila_seccion(const char *texto){
-    printf("     " C_B_CIAN "|  " C_B_MAGENTA ">> %-56.56s" C_B_CIAN " |" C_RESET "\n", texto);
+    printf("        " C_B_CIAN "|  " C_B_MAGENTA ">> %-56.56s" C_B_CIAN " |" C_RESET "\n", texto);
 }
 
 // fila de un marco con una opcion numerada del menu
 void opcion_menu(int numero, const char *texto){
-    printf("     " C_B_CIAN "|  " C_B_AMARILLO "[%2d]" C_RESET "  %-52.52s " C_B_CIAN "|" C_RESET "\n", numero, texto);
+    printf("        " C_B_CIAN "|  " C_B_AMARILLO "[%2d]" C_RESET "  %-54.54s" C_B_CIAN "|" C_RESET "\n", numero, texto);
 }
 
 // cabecera de cada pantalla: un marco con el titulo centrado
@@ -1828,13 +1834,13 @@ void titulo(const char *texto){
         derecha = 0;
     }
 
-    printf("\n     " C_B_CIAN "+==============================================================+" C_RESET "\n");
-    printf("     " C_B_CIAN "| " C_RESET);
+    printf("\n        " C_B_CIAN "+==============================================================+" C_RESET "\n");
+    printf("        " C_B_CIAN "| " C_RESET);
     linea_de(' ', izquierda);
     printf(C_B_AMARILLO "%s" C_RESET, texto);
     linea_de(' ', derecha);
     printf(" " C_B_CIAN "|" C_RESET "\n");
-    printf("     " C_B_CIAN "+==============================================================+" C_RESET "\n\n");
+    printf("        " C_B_CIAN "+==============================================================+" C_RESET "\n\n");
 }
 
 // retardo en milisegundos para animaciones
@@ -2790,7 +2796,7 @@ void simular_torneo_corto(void){
     printf("\n\n");
     imprimir_trofeo();
     printf("     " C_B_AMARILLO "+==============================================================+" C_RESET "\n");
-    printf("     " C_B_AMARILLO "|      ¡CAMPEON DE LA COPA RELAMPAGO (TORNEO CORTO)!           |" C_RESET "\n");
+    printf("     " C_B_AMARILLO "|      Â¡CAMPEON DE LA COPA RELAMPAGO (TORNEO CORTO)!           |" C_RESET "\n");
     printf("     " C_B_AMARILLO "|                                                              |" C_RESET "\n");
     printf("     " C_B_AMARILLO "|  Entrenador: %-25.25s ID: %-5d       |" C_RESET "\n",
            entrenadores[campeon_corto].Nombre, entrenadores[campeon_corto].Identificador);
